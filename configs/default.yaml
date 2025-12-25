@@ -1,0 +1,43 @@
+project_name: "Cricket-MoR-Simulation"
+version: "0.1.0"
+
+# Simulation -- 仿真参数
+simulation:
+    dt: 0.002 # 2ms per step (High temporal resolotion to capature 74ms delay)
+    episode_length_ms: 3000
+
+# visual (Visual Stream - Takeuchi 2025) -- 视觉参数
+visual:
+    looming_threshold_deg: 41.0 # angle threshold to invoke escape response
+    motor_delay_ms: 74.0 # visual to motor delay in ms
+    jump_probability: 0.02 # visual stimulus seldom invokes jump directly (P <= 0.02)
+
+# audio (Audio Stream - Lu et al. 2023)
+audio:
+    tone_freq: 15000 # 15kHz
+    coincidence_window_start: 1000 # 风刺激前 1000ms
+    coincidence_window_end: 2000 # 风刺激前 2000ms (之后失效)
+
+# Architecture (Model Input/Output)
+model:
+    input_dim: 6 # [Wind_cos, Wind_sin, Audio_Amp, Visual_theta, Visual_d_theta, Visual_On/Off]
+    output_dim: 4 # [P_run, P_jump, Cos_dir, Sin_dir]
+    hidden_dim: 64
+    rnn_type: "MoR" # Mixture-of-Recursions or GatedRNN
+
+bio_initialization:
+    # Gate Biases -- 门控偏置
+    bias_reset_rest: -3.0 # Default Forget Gate Bias -- 默认遗忘门偏置
+    bias_update_rest: 4.5 # ** Forget speed rate -- 决定记忆衰减速度 (4.5 ~= 1-2s window) **
+
+    # 听觉通路 (Audio Pathway - Context)
+    weight_audio_open: -8.0 # 强力开门
+    weight_audio_drive: 2.0 # 适度启动 (Priming)
+
+    # 风觉通路 (Wind Pathway - Reflex Trigger via ANs)
+    weight_wind_open: -8.0 # 强力开门
+    weight_wind_drive: 5.0 # 强力尖峰 (Spike Trigger)
+
+    # 视觉通路 (Visual Pathway - Context)
+    weight_visual_open: -5.0 # 适度开门
+    weight_visual_drive: 0.5 # 视觉驱动强度

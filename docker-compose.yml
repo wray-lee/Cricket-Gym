@@ -1,0 +1,19 @@
+services:
+  cricket-sim:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: cricket_neuroai
+    volumes:
+      - .:/app  # mount current dir to hot update codes -- 挂载当前目录，实现代码热更新
+    environment:
+      - PYTHONUNBUFFERED=1
+    # GPU usage -- 如果你有 GPU，取消注释以下部分
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: python main.py --mode train
