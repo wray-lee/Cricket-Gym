@@ -10,6 +10,7 @@ simulation:
 visual:
     looming_threshold_deg: 41.0 # angle threshold to invoke escape response
     motor_delay_ms: 74.0 # visual to motor delay in ms
+    wind_delay_ms: 20.0  # wind to motor delay in ms
     jump_probability: 0.02 # visual stimulus seldom invokes jump directly (P <= 0.02)
 
 # audio (Audio Stream - Lu et al. 2023)
@@ -28,11 +29,11 @@ model:
 bio_initialization:
     # Gate Biases -- 门控偏置
     bias_reset_rest: -3.0 # Default Forget Gate Bias -- 默认遗忘门偏置
-    bias_update_rest: 4.5 # ** Forget speed rate -- 决定记忆衰减速度 (4.5 ~= 1-2s window) **
+    bias_update_rest: 2.0 # ** Forget speed rate -- 决定记忆衰减速度 (4.5 ~= 1-2s window) **
 
     # 听觉通路 (Audio Pathway - Context)
     weight_audio_open: -8.0 # 强力开门
-    weight_audio_drive: 2.0 # 适度启动 (Priming)
+    weight_audio_drive: 1.5 # 适度启动 (Priming)
 
     # 风觉通路 (Wind Pathway - Reflex Trigger via ANs)
     weight_wind_open: -8.0 # 强力开门

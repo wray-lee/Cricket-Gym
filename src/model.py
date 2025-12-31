@@ -28,48 +28,52 @@ class BaselineLSTM(nn.Module):
 
 class BioMoR_RNN(nn.Module):
     """
-    Biologically-Constrained Mixture-of-Recursions (MoR).
-    RE-WIRED: LAL now receives Ascending Neuron (AN) inputs from Wind.
+    Biologically-Constrained Mixture-of-Recursions (MoR) - Phase 2
+    Updated with explicit Policy Head (Classification) and Motor Head (Regression).
     """
 
     def __init__(self, config: Dict):
         super().__init__()
         self.cfg = config
         hidden_dim = config["model"]["hidden_dim"]
-        output_dim = config["model"]["output_dim"]
+        # output_dim 依然是 4: [P_run, P_jump, Cos_phi, Sin_phi]
 
         # --- 1. Feature Engineering ---
-        # Reflex (Fast): Wind_Cos(0), Wind_Sin(1) -> 2 dims
-        self.reflex_input_dim = 2
+        self.reflex_input_dim = 2  # Wind Only (Fast)
+        self.context_input_dim = 6  # Wind + Audio + Visual (Slow/LAL)
 
-        # Context (LAL Inputs):
-        # NOW INCLUDES WIND (via Ascending Neurons)!
-        # Wind(2) + Audio(1) + Visual(3) = 6 dims
-        self.context_input_dim = 6
-
-        # --- 2. The "Router" (LAL) ---
+        # --- 2. The "Router" (LAL - Lateral Accessory Lobe) ---
         self.router_rnn = nn.GRUCell(self.context_input_dim, hidden_dim)
 
-        # Gates
+        # Gates (Top-Down Modulation)
+        # Gain: 调节 Reflex Backbone 的输入敏感度
         self.gain_gate = nn.Linear(hidden_dim, self.reflex_input_dim)
-        self.bias_gate = nn.Linear(hidden_dim, output_dim)
 
-        # --- 3. The "Reflex" (DNs) ---
-        self.reflex_layer = nn.Sequential(
-            nn.Linear(self.reflex_input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim),
+        # Bias: 包含 Policy Bias (Run/Jump倾向) 和 Motor Bias (方向偏差)
+        # 这是一个关键的 Context 注入点，解释了 Lu et al. (2023) 中的 Biased Backward 现象
+        self.bias_gate = nn.Linear(hidden_dim, 4)
+
+        # --- 3. The "Reflex" (DNs - Descending Neurons) ---
+        # A. Shared Backbone: 提取运动特征
+        self.reflex_backbone = nn.Sequential(
+            nn.Linear(self.reflex_input_dim, hidden_dim), nn.ReLU()
         )
+
+        # B. Policy Head (Classification): Run vs Jump
+        self.policy_head = nn.Linear(hidden_dim, 2)
+
+        # C. Motor Head (Regression): Direction Control [Cos, Sin]
+        self.motor_head = nn.Linear(hidden_dim, 2)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         batch_size, seq_len, _ = x.size()
 
-        # Reflex Pathway: Only sees Wind
-        x_reflex = x[:, :, 0:2]
-
-        # Context Pathway: Sees EVERYTHING (Integrator)
-        # Wind (0,1) + Audio (2) + Visual (3,4,5)
-        x_context = x  # 直接使用全部输入
+        # Input Splitting
+        x_reflex = x[:, :, 0:2]  # Wind
+        x_audio = x[:, :, 2:3]
+        x_visual = x[:, :, 3:6]
+        # Context sees everything (Wind added per previous discussion)
+        x_context = torch.cat([x[:, :, 0:2], x_audio, x_visual], dim=-1)
 
         # Initialize States
         h_router = torch.zeros(batch_size, self.cfg["model"]["hidden_dim"]).to(x.device)
@@ -78,21 +82,39 @@ class BioMoR_RNN(nn.Module):
         router_states = []
 
         for t in range(seq_len):
-            # 1. Update Router (LAL) State
+            # 1. Update Router (LAL)
             h_router = self.router_rnn(x_context[:, t, :], h_router)
 
-            # 2. Modulation
-            gain = torch.sigmoid(self.gain_gate(h_router))
-            bias = self.bias_gate(h_router)
+            # 2. Compute Modulations
+            gain = torch.sigmoid(self.gain_gate(h_router))  # Gain [0, 1]
+            bias = self.bias_gate(h_router)  # Bias (unbounded)
 
-            # 3. Reflex Execution
+            # Split Bias for different heads
+            bias_policy = bias[:, 0:2]  # 影响 Run/Jump
+            bias_motor = bias[:, 2:4]  # 影响方向 (e.g. shift to 130 deg)
+
+            # 3. Reflex Pathway Execution
+            # Apply Gain Gating
             modulated_input = x_reflex[:, t, :] * gain
-            reflex_out = self.reflex_layer(modulated_input)
-            final_logit = reflex_out + bias
 
-            # 4. Decode
-            probs = torch.sigmoid(final_logit[:, 0:2])
-            dirs = torch.tanh(final_logit[:, 2:4])
+            # Pass through Shared Backbone
+            reflex_features = self.reflex_backbone(modulated_input)
+
+            # --- Head 1: Policy (Classification) ---
+            # Logits + Context Bias
+            policy_logits = self.policy_head(reflex_features) + bias_policy
+
+            # 移除sigmod,通过loss处理
+            # probs = torch.sigmoid(policy_logits)
+            probs = policy_logits
+
+            # --- Head 2: Motor (Regression) ---
+            # Logits + Directional Bias
+            motor_logits = self.motor_head(reflex_features) + bias_motor
+            # 使用 Tanh 强制输出在 [-1, 1] 之间，符合 Cos/Sin 定义
+            dirs = torch.tanh(motor_logits)
+
+            # 4. Concatenate Output
             y_t = torch.cat([probs, dirs], dim=1)
 
             y_preds.append(y_t.unsqueeze(1))
