@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple
-
+from typing import Dict, Tuple, Optional
 
 class BaselineLSTM(nn.Module):
     """
@@ -25,102 +24,125 @@ class BaselineLSTM(nn.Module):
         dirs = torch.tanh(logits[:, :, 2:4])
         return torch.cat([probs, dirs], dim=-1), None
 
-
 class BioMoR_RNN(nn.Module):
     """
-    Biologically-Constrained Mixture-of-Recursions (MoR) - Phase 2
-    Updated with explicit Policy Head (Classification) and Motor Head (Regression).
+    BioMoR Phase 3: With Corollary Discharge (Efference Copy).
+
+    Feature:
+    - Inputs: [Wind_x, Wind_y, Audio, Vis_Theta, Vis_dTheta, Vis_On]
+    - Feedback: Last Action [P_run, P_jump, Cos, Sin] is fed back to Router.
     """
 
     def __init__(self, config: Dict):
         super().__init__()
         self.cfg = config
-        hidden_dim = config["model"]["hidden_dim"]
-        # output_dim 依然是 4: [P_run, P_jump, Cos_phi, Sin_phi]
+        self.hidden_dim = config["model"]["hidden_dim"]
 
-        # --- 1. Feature Engineering ---
-        self.reflex_input_dim = 2  # Wind Only (Fast)
-        self.context_input_dim = 6  # Wind + Audio + Visual (Slow/LAL)
+        # Dimensions
+        self.reflex_input_dim = 2   # Wind (Direct)
+        self.context_input_dim = 6  # All Sensory
+        self.action_dim = 4         # [P_run, P_jump, Cos, Sin]
 
-        # --- 2. The "Router" (LAL - Lateral Accessory Lobe) ---
-        self.router_rnn = nn.GRUCell(self.context_input_dim, hidden_dim)
+        # [关键] Router 输入 = 感官上下文 + 上一时刻动作 (Corollary Discharge)
+        self.router_input_dim = self.context_input_dim + self.action_dim
 
-        # Gates (Top-Down Modulation)
-        # Gain: 调节 Reflex Backbone 的输入敏感度
-        self.gain_gate = nn.Linear(hidden_dim, self.reflex_input_dim)
+        self.router_rnn = nn.GRUCell(self.router_input_dim, self.hidden_dim)
 
-        # Bias: 包含 Policy Bias (Run/Jump倾向) 和 Motor Bias (方向偏差)
-        # 这是一个关键的 Context 注入点，解释了 Lu et al. (2023) 中的 Biased Backward 现象
-        self.bias_gate = nn.Linear(hidden_dim, 4)
+        # Gates
+        self.gain_gate = nn.Linear(self.hidden_dim, self.reflex_input_dim)
+        self.bias_gate = nn.Linear(self.hidden_dim, 4)
 
-        # --- 3. The "Reflex" (DNs - Descending Neurons) ---
-        # A. Shared Backbone: 提取运动特征
+        # Reflex Backbone
         self.reflex_backbone = nn.Sequential(
-            nn.Linear(self.reflex_input_dim, hidden_dim), nn.ReLU()
+            nn.Linear(self.reflex_input_dim, self.hidden_dim),
+            nn.ReLU()
         )
+        self.policy_head = nn.Linear(self.hidden_dim, 2)
+        self.motor_head = nn.Linear(self.hidden_dim, 2)
 
-        # B. Policy Head (Classification): Run vs Jump
-        self.policy_head = nn.Linear(hidden_dim, 2)
+    def forward(self, x: torch.Tensor, h_router: Optional[torch.Tensor] = None, last_action: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Args:
+            x: Input tensor.
+            h_router: Previous hidden state.
+            last_action: Previous action (used in Step mode).
 
-        # C. Motor Head (Regression): Direction Control [Cos, Sin]
-        self.motor_head = nn.Linear(hidden_dim, 2)
+        Returns:
+            output: Predictions
+            hidden: New hidden state
+            (In Step mode returns: pred, h_new, action_new)
+        """
+        batch_size = x.size(0)
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        batch_size, seq_len, _ = x.size()
+        # --- Case 1: Step-by-Step Inference (Closed-Loop / Single Step) ---
+        if x.dim() == 2:
+            if h_router is None:
+                h_router = torch.zeros(batch_size, self.hidden_dim).to(x.device)
+            if last_action is None:
+                last_action = torch.zeros(batch_size, self.action_dim).to(x.device)
 
-        # Input Splitting
-        x_reflex = x[:, :, 0:2]  # Wind
-        x_audio = x[:, :, 2:3]
-        x_visual = x[:, :, 3:6]
-        # Context sees everything (Wind added per previous discussion)
-        x_context = torch.cat([x[:, :, 0:2], x_audio, x_visual], dim=-1)
+            x_context = x
+            x_reflex = x[:, 0:2]
 
-        # Initialize States
-        h_router = torch.zeros(batch_size, self.cfg["model"]["hidden_dim"]).to(x.device)
+            # [CD Mechanism] Cat Context + Last Action
+            router_input = torch.cat([x_context, last_action], dim=1)
 
-        y_preds = []
-        router_states = []
+            # 1. Update Router
+            h_new = self.router_rnn(router_input, h_router)
 
-        for t in range(seq_len):
-            # 1. Update Router (LAL)
-            h_router = self.router_rnn(x_context[:, t, :], h_router)
+            # 2. Reflex & Gates
+            gain = torch.sigmoid(self.gain_gate(h_new))
+            bias = self.bias_gate(h_new)
 
-            # 2. Compute Modulations
-            gain = torch.sigmoid(self.gain_gate(h_router))  # Gain [0, 1]
-            bias = self.bias_gate(h_router)  # Bias (unbounded)
+            modulated_input = x_reflex * gain
+            reflex_feat = self.reflex_backbone(modulated_input)
 
-            # Split Bias for different heads
-            bias_policy = bias[:, 0:2]  # 影响 Run/Jump
-            bias_motor = bias[:, 2:4]  # 影响方向 (e.g. shift to 130 deg)
+            probs = torch.sigmoid(self.policy_head(reflex_feat) + bias[:, 0:2])
+            dirs = torch.tanh(self.motor_head(reflex_feat) + bias[:, 2:4])
 
-            # 3. Reflex Pathway Execution
-            # Apply Gain Gating
-            modulated_input = x_reflex[:, t, :] * gain
+            current_action = torch.cat([probs, dirs], dim=1)
 
-            # Pass through Shared Backbone
-            reflex_features = self.reflex_backbone(modulated_input)
+            # Return action for next step's feedback
+            return current_action, h_new, current_action
 
-            # --- Head 1: Policy (Classification) ---
-            # Logits + Context Bias
-            policy_logits = self.policy_head(reflex_features) + bias_policy
+        # --- Case 2: Sequence Training (Batch, Seq, Dim) ---
+        else:
+            seq_len = x.size(1)
+            x_reflex = x[:, :, 0:2]
+            x_context = x
 
-            # 移除sigmod,通过loss处理
-            # probs = torch.sigmoid(policy_logits)
-            probs = policy_logits
+            if h_router is None:
+                h_router = torch.zeros(batch_size, self.hidden_dim).to(x.device)
 
-            # --- Head 2: Motor (Regression) ---
-            # Logits + Directional Bias
-            motor_logits = self.motor_head(reflex_features) + bias_motor
-            # 使用 Tanh 强制输出在 [-1, 1] 之间，符合 Cos/Sin 定义
-            dirs = torch.tanh(motor_logits)
+            # Start with zero action
+            current_last_action = torch.zeros(batch_size, self.action_dim).to(x.device)
 
-            # 4. Concatenate Output
-            y_t = torch.cat([probs, dirs], dim=1)
+            y_preds = []
+            h_history = []
 
-            y_preds.append(y_t.unsqueeze(1))
-            router_states.append(h_router.unsqueeze(1))
+            for t in range(seq_len):
+                # [CD Mechanism]
+                router_input = torch.cat([x_context[:, t, :], current_last_action], dim=1)
 
-        y_pred = torch.cat(y_preds, dim=1)
-        router_activity = torch.cat(router_states, dim=1)
+                h_router = self.router_rnn(router_input, h_router)
+                h_history.append(h_router.unsqueeze(1))
 
-        return y_pred, router_activity
+                gain = torch.sigmoid(self.gain_gate(h_router))
+                bias = self.bias_gate(h_router)
+
+                modulated_input = x_reflex[:, t, :] * gain
+                reflex_feat = self.reflex_backbone(modulated_input)
+
+                probs = torch.sigmoid(self.policy_head(reflex_feat) + bias[:, 0:2])
+                dirs = torch.tanh(self.motor_head(reflex_feat) + bias[:, 2:4])
+
+                y_t = torch.cat([probs, dirs], dim=1)
+                y_preds.append(y_t.unsqueeze(1))
+
+
+                # Update feedback for next step
+                # [Critical Fix] Detach to prevent gradient backprop through time
+                # This stabilizes training and reduces output oscillations
+                current_last_action = y_t.detach()
+
+            return torch.cat(y_preds, dim=1), torch.cat(h_history, dim=1)
