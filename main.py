@@ -83,7 +83,8 @@ def main():
     elif args.mode == "train":
 
         EPOCHS = 700  # 增加轮数以获得更好收敛
-        BATCH_SIZE = 64
+        BATCH_SIZE = 128  # 增加batch size从64到128
+        BATCHES_PER_EPOCH = 4  # 每个epoch生成4个batch，总样本量=128*4=512
         LEARNING_RATE = 0.0005  # 降低学习率以提高稳定性
         GRAD_CLIP = 1.0
 
@@ -188,29 +189,43 @@ def main():
 
         try:
             for epoch in range(EPOCHS):
-                X_np, Y_np = gen.generate_batch(BATCH_SIZE)
-                X = torch.tensor(X_np, dtype=torch.float32).to(device)
-                Y = torch.tensor(Y_np, dtype=torch.float32).to(device)
+                epoch_loss = 0.0
+                epoch_loss_dict = {'cls': 0.0, 'dir': 0.0, 'act': 0.0}
 
-                optimizer.zero_grad()
+                # 每个epoch生成多个batch以增加样本多样性
+                for batch_idx in range(BATCHES_PER_EPOCH):
+                    X_np, Y_np = gen.generate_batch(BATCH_SIZE)
+                    X = torch.tensor(X_np, dtype=torch.float32).to(device)
+                    Y = torch.tensor(Y_np, dtype=torch.float32).to(device)
 
-                if args.arch == "BioMoR":
-                    Y_pred, router_state = model(X)
-                    total_loss, loss_dict = criterion(Y_pred, Y, router_state)
-                else:
-                    Y_pred, _ = model(X)
-                    dummy_state = torch.zeros_like(Y_pred)
-                    total_loss, loss_dict = criterion(Y_pred, Y, dummy_state)
+                    optimizer.zero_grad()
 
-                total_loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
-                optimizer.step()
+                    if args.arch == "BioMoR":
+                        Y_pred, router_state = model(X)
+                        total_loss, loss_dict = criterion(Y_pred, Y, router_state)
+                    else:
+                        Y_pred, _ = model(X)
+                        dummy_state = torch.zeros_like(Y_pred)
+                        total_loss, loss_dict = criterion(Y_pred, Y, dummy_state)
 
-                loss_history.append(total_loss.item())
+                    total_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
+                    optimizer.step()
+
+                    epoch_loss += total_loss.item()
+                    for key in epoch_loss_dict:
+                        epoch_loss_dict[key] += loss_dict[key]
+
+                # 计算平均loss
+                epoch_loss /= BATCHES_PER_EPOCH
+                for key in epoch_loss_dict:
+                    epoch_loss_dict[key] /= BATCHES_PER_EPOCH
+
+                loss_history.append(epoch_loss)
                 if (epoch + 1) % 10 == 0:
                     print(
-                        f"Epoch [{epoch+1}/{EPOCHS}] Loss: {total_loss.item():.6f} "
-                        f"(Cls: {loss_dict['cls']:.4f}, Dir: {loss_dict['dir']:.4f}, Act: {loss_dict['act']:.4f})"
+                        f"Epoch [{epoch+1}/{EPOCHS}] Loss: {epoch_loss:.6f} "
+                        f"(Cls: {epoch_loss_dict['cls']:.4f}, Dir: {epoch_loss_dict['dir']:.4f}, Act: {epoch_loss_dict['act']:.4f})"
                     )
 
             torch.save(model.state_dict(), save_name)
