@@ -260,7 +260,7 @@ If you use this code in your research, please cite:
 
 ## References
 
-- Mixture-of-Ramps RNN architecture
+- Mixture-of-Recursion RNN architecture
 - Cricket escape behavior literature
 - Visual looming detection mechanisms
 - Audio-wind multimodal integration
