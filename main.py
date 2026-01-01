@@ -82,7 +82,7 @@ def main():
     # --- Mode: Training ---
     elif args.mode == "train":
 
-        EPOCHS = 500  # 增加轮数以获得更好收敛
+        EPOCHS = 700  # 增加轮数以获得更好收敛
         BATCH_SIZE = 64
         LEARNING_RATE = 0.0005  # 降低学习率以提高稳定性
         GRAD_CLIP = 1.0

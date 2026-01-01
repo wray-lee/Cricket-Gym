@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+dist_min = 30.0  # 缩短距离以降低生存率
+dist_max = 40.0
+
+speed_min = 6.0  # 降低速度以提高生存率到60%+
+speed_max = 9.0
 class CricketEscapeEnv:
     def __init__(self, config):
         self.cfg = config
@@ -19,7 +24,7 @@ class CricketEscapeEnv:
         self.is_collided = False
 
         # Physics limits
-        self.run_speed = 15.0   # cm/s
+        self.run_speed = 15.0   # cm/s (提高以提高生存率)
         self.jump_speed = 100.0 # cm/s (Burst)
         self.friction = 0.9     # speed decay
         self.current_speed = 0.0
@@ -31,13 +36,11 @@ class CricketEscapeEnv:
         self.cricket_pos = np.array([50.0, 30.0])
         self.cricket_heading = np.pi / 2 # Facing up (towards danger initially)
 
-        # [修复] 让捕食者从更远的地方开始，避免初始时刻就有高逃跑概率
-        # 从65-75cm的距离开始接近，给蟋蟀足够的反应时间
-        # 平衡点：既要让Action Probability从低值开始，又要保持合理的生存率
-        initial_distance = np.random.uniform(35.0, 45.0)  # 距离蟋蟀35-45cm
+        # predator 参数设置
+        initial_distance = np.random.uniform(dist_min, dist_max)  # 距离蟋蟀35-45cm
         self.predator_pos = np.array([50.0, 30.0 + initial_distance])
 
-        speed = np.random.uniform(5.0, 8.0)
+        speed = np.random.uniform(speed_min, speed_max)  # 提高速度以增加生存压力
         angle = np.random.uniform(-0.1, 0.1) - (np.pi/2) # Moving down roughly
         self.predator_vel = np.array([np.cos(angle)*speed, np.sin(angle)*speed])
 
@@ -55,8 +58,8 @@ class CricketEscapeEnv:
         move_speed = 0.0
         action_type = "Stay"
 
-        # Thresholds (Lowered slightly to prevent hesitation)
-        RUN_TH = 0.5
+        # Thresholds (平衡反应速度和移动能力)
+        RUN_TH = 0.35  # 提高到0.35以延迟反应
         JUMP_TH = 0.5
 
         if p_jump > JUMP_TH:
@@ -90,7 +93,13 @@ class CricketEscapeEnv:
         # 转换到全局坐标系
         # 全局逃跑方向 = Wind全局角度 + 180度 + 模型在Wind坐标系中的角度
         # Wind指向蟋蟀，加180度反转后指向捕食者的反方向
-        target_heading = wind_global_angle + np.pi + model_angle_in_wind_frame
+        # 添加随机噪声以增加轨迹多样性
+        # 使用混合分布：大部分时候小噪声，偶尔大幅偏离
+        if np.random.random() < 0.1:  # 10%概率大幅偏离
+            noise = np.random.uniform(-0.8, 0.8)  # ±0.8弧度 ≈ ±46度
+        else:
+            noise = np.random.uniform(-0.3, 0.3)  # ±0.3弧度 ≈ ±17度
+        target_heading = wind_global_angle + np.pi + model_angle_in_wind_frame + noise
 
         # 3. Physics Update
         if move_speed > 0:

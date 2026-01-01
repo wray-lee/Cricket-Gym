@@ -108,11 +108,16 @@ def plot_trajectory_panel(trajectories, ax):
                    c='white', s=80, edgecolor=colors['cricket'],
                    linewidth=2, zorder=3)
 
-    # 绘制参考捕食者路径（取第一个）
+    # 绘制捕食者为单个箭头（从起点到终点）
     predator_path = np.array(trajectories[0]['predator_pos'])
-    ax.plot(predator_path[:, 0], predator_path[:, 1],
-            color=colors['predator'], linewidth=2, linestyle='--',
-            alpha=0.8, label='Predator', zorder=1)
+    start = predator_path[0]
+    end = predator_path[-1]
+
+    # 绘制箭头
+    ax.annotate('', xy=end, xytext=start,
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['predator'],
+                               alpha=0.8, mutation_scale=20),
+                zorder=1)
 
     # 美化
     ax.set_xlim(20, 80)
@@ -129,7 +134,8 @@ def plot_trajectory_panel(trajectories, ax):
     legend_elements = [
         Line2D([0], [0], color=colors['survived'], lw=2, label='Survived'),
         Line2D([0], [0], color=colors['caught'], lw=2, label='Caught'),
-        Line2D([0], [0], color=colors['predator'], lw=2, ls='--', label='Predator')
+        Line2D([0], [0], color=colors['predator'], lw=0,
+               marker='$\u2192$', markersize=20, label='Predator')
     ]
     ax.legend(handles=legend_elements, frameon=True, fancybox=False,
               edgecolor='black', loc='upper right')
