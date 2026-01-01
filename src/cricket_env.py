@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-dist_min = 30.0  # 缩短距离以降低生存率
-dist_max = 40.0
+dist_min = 20.0  # 进一步缩短距离以降低生存率
+dist_max = 30.0
 
-speed_min = 6.0  # 降低速度以提高生存率到60%+
+speed_min = 6.0  # 显著提高速度以降低生存率
 speed_max = 9.0
 class CricketEscapeEnv:
     def __init__(self, config):
@@ -59,8 +59,8 @@ class CricketEscapeEnv:
         action_type = "Stay"
 
         # Thresholds (平衡反应速度和移动能力)
-        RUN_TH = 0.35  # 提高到0.35以延迟反应
-        JUMP_TH = 0.5
+        RUN_TH = 0.4  # 提高到0.4以进一步延迟反应
+        JUMP_TH = 0.8
 
         if p_jump > JUMP_TH:
             move_speed = self.jump_speed
@@ -96,7 +96,7 @@ class CricketEscapeEnv:
         # 添加随机噪声以增加轨迹多样性
         # 使用混合分布：大部分时候小噪声，偶尔大幅偏离
         if np.random.random() < 0.1:  # 10%概率大幅偏离
-            noise = np.random.uniform(-0.8, 0.8)  # ±0.8弧度 ≈ ±46度
+            noise = np.random.uniform(-1.0, 1.0)  # ±1.0弧度 ≈ ±57度
         else:
             noise = np.random.uniform(-0.3, 0.3)  # ±0.3弧度 ≈ ±17度
         target_heading = wind_global_angle + np.pi + model_angle_in_wind_frame + noise

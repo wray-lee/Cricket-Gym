@@ -121,7 +121,7 @@ def plot_trajectory_panel(trajectories, ax):
 
     # 美化
     ax.set_xlim(20, 80)
-    ax.set_ylim(10, 80)
+    ax.set_ylim(-10, 80)
     ax.set_aspect('equal')
     ax.set_xlabel('X Position (cm)', fontsize=11, fontweight='bold')
     ax.set_ylabel('Y Position (cm)', fontsize=11, fontweight='bold')
