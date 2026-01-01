@@ -1,3 +1,5 @@
 *.png
-*.pth
-/outputs/
+models/
+#outputs/
+src/__pycache__
+debug/
