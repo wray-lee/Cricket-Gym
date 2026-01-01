@@ -43,7 +43,8 @@ class BioMoR_RNN(nn.Module):
         self.context_input_dim = 6  # All Sensory
         self.action_dim = 4         # [P_run, P_jump, Cos, Sin]
 
-        # [关键] Router 输入 = 感官上下文 + 上一时刻动作 (Corollary Discharge)
+        # Router input combines sensory context with previous action (corollary discharge mechanism)
+        # This enables the model to modulate current responses based on recent motor output
         self.router_input_dim = self.context_input_dim + self.action_dim
 
         self.router_rnn = nn.GRUCell(self.router_input_dim, self.hidden_dim)
@@ -84,7 +85,7 @@ class BioMoR_RNN(nn.Module):
             x_context = x
             x_reflex = x[:, 0:2]
 
-            # [CD Mechanism] Cat Context + Last Action
+            # Corollary discharge: Concatenate sensory context with previous action
             router_input = torch.cat([x_context, last_action], dim=1)
 
             # 1. Update Router
@@ -121,7 +122,7 @@ class BioMoR_RNN(nn.Module):
             h_history = []
 
             for t in range(seq_len):
-                # [CD Mechanism]
+                # Corollary discharge: Combine current sensory input with previous action
                 router_input = torch.cat([x_context[:, t, :], current_last_action], dim=1)
 
                 h_router = self.router_rnn(router_input, h_router)

@@ -82,10 +82,10 @@ def main():
     # --- Mode: Training ---
     elif args.mode == "train":
 
-        EPOCHS = 700  # 增加轮数以获得更好收敛
-        BATCH_SIZE = 128  # 增加batch size从64到128
-        BATCHES_PER_EPOCH = 4  # 每个epoch生成4个batch，总样本量=128*4=512
-        LEARNING_RATE = 0.0005  # 降低学习率以提高稳定性
+        EPOCHS = 700  # Training epochs for better convergence
+        BATCH_SIZE = 128  # Increased from 64 for more stable gradients
+        BATCHES_PER_EPOCH = 4  # Generate 4 batches per epoch (total 512 samples)
+        LEARNING_RATE = 0.0005  # Lower learning rate for training stability
         GRAD_CLIP = 1.0
 
         print(f"[Task] Initializing Model Training: {args.arch}...")
@@ -111,8 +111,11 @@ def main():
             for name, param in model.named_parameters():
                 if "router_rnn" in name and "bias" in name:
                     param.data.fill_(0.0)
-                    param.data[r_idx].fill_(bio_cfg.get("bias_reset_rest", -2.0))
-                    param.data[z_idx].fill_(bio_cfg.get("bias_update_rest", 3.0))
+                    # Read base biases
+                    bias_reset = bio_cfg.get("bias_reset_rest", -2.0)
+                    bias_update = bio_cfg.get("bias_update_rest", 3.0)
+                    param.data[r_idx].fill_(bias_reset)
+                    param.data[z_idx].fill_(bias_update)
                     param.data[n_idx].fill_(0.0)
 
             # === 2. Output Gating (Bias Gate) ===
@@ -137,7 +140,7 @@ def main():
             # === 3. Policy Head ===
             if hasattr(model, "policy_head"):
                 policy_bias_val = bio_cfg.get("bias_policy_head", -0.5)
-                # [关键] 读取 Policy Head 权重 (不再硬编码)
+                # Read policy head weights from config
                 policy_weight_std = bio_cfg.get("weight_policy_head", 0.5)
                 policy_bias_val = bio_cfg.get("bias_policy_head", -6.0)
 
@@ -152,7 +155,7 @@ def main():
                 w_ih.fill_(0.0)
 
                 # A. Corollary Discharge (Action -> Router Inhibition)
-                # [关键] 读取 CD 抑制强度 (不再硬编码)
+                # Read corollary discharge inhibition strength from config
                 cd_weight = bio_cfg.get("weight_corollary_discharge", -2.0)
                 # Assumes Action (4 dims) are the LAST 4 columns of input
                 w_ih[:, -4:].fill_(cd_weight)
@@ -192,7 +195,7 @@ def main():
                 epoch_loss = 0.0
                 epoch_loss_dict = {'cls': 0.0, 'dir': 0.0, 'act': 0.0}
 
-                # 每个epoch生成多个batch以增加样本多样性
+                # Generate multiple batches per epoch for sample diversity
                 for batch_idx in range(BATCHES_PER_EPOCH):
                     X_np, Y_np = gen.generate_batch(BATCH_SIZE)
                     X = torch.tensor(X_np, dtype=torch.float32).to(device)
@@ -216,7 +219,7 @@ def main():
                     for key in epoch_loss_dict:
                         epoch_loss_dict[key] += loss_dict[key]
 
-                # 计算平均loss
+                # Calculate average loss across batches
                 epoch_loss /= BATCHES_PER_EPOCH
                 for key in epoch_loss_dict:
                     epoch_loss_dict[key] /= BATCHES_PER_EPOCH

@@ -66,24 +66,24 @@ class NeuroEvaluator:
         # 3. Dynamic Plotting Configuration
         time = np.arange(len(x_np)) * self.dt * 1000  # ms
 
-        # 定义不同模式下要画的图层
+        # Define which layers to plot for different trial types
         if trial_type == "visual":
-            # Visual 模式：不画 Wind/Audio
+            # Visual mode: exclude Wind/Audio layers
             plots_to_draw = ["Visual", "LAL", "Action", "Direction"]
             figsize = (10, 12)
         elif trial_type == "audio_wind":
-            # AudioWind 模式：不画 Visual
+            # AudioWind mode: exclude Visual layers
             plots_to_draw = ["Wind", "Audio", "LAL", "Action", "Direction"]
             figsize = (10, 14)
         else:
-            # Mixed/Conflict: 全画
+            # Mixed/Conflict: plot all layers
             plots_to_draw = ["Visual", "Wind", "Audio", "LAL", "Action", "Direction"]
             figsize = (10, 16)
 
         fig, axes = plt.subplots(len(plots_to_draw), 1, figsize=figsize, sharex=True)
         if len(plots_to_draw) == 1: axes = [axes]
 
-        # 遍历绘制
+        # Iterate and plot each layer
         for i, plot_name in enumerate(plots_to_draw):
             ax = axes[i]
 
@@ -91,11 +91,11 @@ class NeuroEvaluator:
             if plot_name == "Visual":
                 ax.plot(time, x_np[:, 3], label="Visual Theta (rad)", color="blue", linewidth=2)
 
-                # Visual 特有的阈值线和触发线
+                # Visual-specific threshold and trigger lines
                 threshold_rad = np.radians(self.vis_threshold_deg)
                 ax.axhline(y=threshold_rad, color='red', linestyle='--', label=f"Thresh {self.vis_threshold_deg}°")
 
-                # 计算物理触发时刻
+                # Calculate physical trigger time
                 trigs = np.where(x_np[:, 3] > threshold_rad)[0]
                 if len(trigs) > 0:
                     t_trig = time[trigs[0]]
@@ -129,14 +129,13 @@ class NeuroEvaluator:
 
             # === Action Probabilities ===
             elif plot_name == "Action":
-                # GT
+                # Ground Truth
                 ax.plot(time, y_gt[:, 0], color="green", linestyle=":", alpha=0.5, label="GT Run")
                 ax.plot(time, y_gt[:, 1], color="orange", linestyle=":", alpha=0.5, label="GT Jump")
 
-                # Pred - 模型输出已经是概率，不需要再sigmoid
-                # [修复] 之前错误地应用了双重sigmoid导致显示总是0.5
-                pred_run = y_pred[:, 0]  # 已经是sigmoid后的概率
-                pred_jump = y_pred[:, 1]  # 已经是sigmoid后的概率
+                # Model predictions are already probabilities (post-sigmoid)
+                pred_run = y_pred[:, 0]
+                pred_jump = y_pred[:, 1]
 
                 ax.plot(time, pred_run, color="green", linewidth=2, label="Pred Run")
                 ax.plot(time, pred_jump, color="orange", linewidth=2, label="Pred Jump")
@@ -148,7 +147,7 @@ class NeuroEvaluator:
                         ax.axvline(x=time[trigs[0]], color='red', linestyle=':', alpha=0.5)
 
                 ax.set_ylabel("Probability")
-                ax.legend(loc="upper left", ncol=2, fontsize='small') # 双列图例
+                ax.legend(loc="upper left", ncol=2, fontsize='small')
                 ax.set_title("Action Output (Run vs Jump)")
 
             # === Direction ===
