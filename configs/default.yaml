@@ -2,54 +2,54 @@ project_name: "Cricket-MoR-Simulation"
 version: "0.1.10 (Paper-Aligned)"
 
 simulation:
-  dt: 0.02
-  episode_length_ms: 3000
+  dt: 0.02 # Time step in seconds (20ms)
+  episode_length_ms: 3000 # Episode duration in milliseconds
 
 visual:
-  looming_threshold_deg: 41.0
-  motor_delay_ms: 74.0
-  wind_delay_ms: 20.0
-  jump_probability: 0.02
+  looming_threshold_deg: 41.0 # Visual angle threshold for triggering escape (degrees)
+  motor_delay_ms: 74.0 # Motor delay from visual trigger to action (ms)
+  wind_delay_ms: 20.0 # Wind stimulus delay (ms)
+  jump_probability: 0.02 # Baseline jump probability for visual stimuli
 
 audio:
-  tone_freq: 15000
-  coincidence_window_start: 800
-  coincidence_window_end: 1200
+  tone_freq: 15000 # Tone frequency in Hz
+  coincidence_window_start: 800 # Start of audio-wind coincidence window (ms)
+  coincidence_window_end: 1200 # End of audio-wind coincidence window (ms)
 
 model:
-  input_dim: 6
-  output_dim: 4
-  hidden_dim: 64
-  rnn_type: "MoR"
+  input_dim: 6 # Input dimension: [audio, wind_x, wind_y, visual, distance, theta]
+  output_dim: 4 # Output dimension: [p_run, p_jump, dir_cos, dir_sin]
+  hidden_dim: 64 # Hidden layer dimension
+  rnn_type: "MoR" # Mixture-of-Ramps RNN architecture
 
 bio_initialization:
-  # --- 基础动力学 ---
-  bias_reset_rest: -2.0
-  bias_update_rest: 3.0
+  # --- Core Dynamics ---
+  bias_reset_rest: -2.0 # Reset gate bias (resting state)
+  bias_update_rest: 3.0 # Update gate bias (resting state)
 
-  # --- 感官输入权重 ---
-  weight_audio_open: -2.0
-  weight_audio_drive: 5.0
+  # --- Sensory Input Weights ---
+  weight_audio_open: -2.0 # Audio input to gate opening
+  weight_audio_drive: 5.0 # Audio input drive strength
 
-  weight_wind_open: -4.0
-  weight_wind_drive: 2.0
+  weight_wind_open: -4.0 # Wind input to gate opening
+  weight_wind_drive: 2.0 # Wind input drive strength
 
-  weight_visual_open: -2.0
-  weight_visual_drive: 0.5
+  weight_visual_open: -2.0 # Visual input to gate opening
+  weight_visual_drive: 0.5 # Visual input drive strength
 
-  # --- 内部反馈 (CD) ---
-  weight_corollary_discharge: -5.0
+  # --- Internal Feedback (Corollary Discharge) ---
+  weight_corollary_discharge: -5.0 # Inhibitory feedback from action to sensory processing
 
-  # --- 输出门控 ---
-  bias_gate: -1.0 # 从-0.5加强到-1.0，降低初始概率
-  weight_gate_policy: 2.5
-  weight_gate_motor: 1.5
+  # --- Output Gating ---
+  bias_gate: -1.0 # Gate bias (increased from -0.5 to -1.0 to reduce initial probability)
+  weight_gate_policy: 2.5 # Policy head gating weight
+  weight_gate_motor: 1.5 # Motor head gating weight
 
   # --- Policy Head ---
-  # [修复初始prob] 从-2.0降至-3.0，确保初始状态prob接近0
-  bias_policy_head: -3.0
-  weight_policy_head: 2.0
+  # Bias reduced from -2.0 to -3.0 to ensure initial probability near 0
+  bias_policy_head: -3.0 # Policy head bias
+  weight_policy_head: 2.0 # Policy head weight
 
-  # --- Loss ---
-  loss_dir: 5.0
-  loss_act: 0.05
+  # --- Loss Weights ---
+  loss_dir: 5.0 # Direction loss weight
+  loss_act: 0.05 # Action loss weight

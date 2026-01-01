@@ -30,11 +30,10 @@ class CricketDataGenerator:
             theta = 2 * np.arctan(l_v_ratio / t_remain)
             d_theta = (2 * l_v_ratio) / (t_remain**2 + l_v_ratio**2)
 
-            # [关键修改] 生物饱和限制 (Bio-Constraint)
-            # 理由：尽管数学上它可以很大，但为了防止 RNN 梯度消失，
-            # 我们模拟视网膜神经元的饱和特性，将其限制在 4.0 rad/s。
-            # 这不会影响 l/v 的特征识别，只会防止数值爆炸。
-            d_theta = np.clip(d_theta, 0, 4.0)  # 之前是 8.0
+            # Biological saturation constraint
+            # Clip angular velocity to prevent gradient explosion while maintaining feature discrimination
+            # Mimics retinal neuron saturation characteristics
+            d_theta = np.clip(d_theta, 0, 4.0)
 
             mask = time_axis > collision_time
             theta[mask] = 0
@@ -84,7 +83,7 @@ class CricketDataGenerator:
             theta, d_theta = self._compute_looming_trajectory(l_v, t_collision)
             x_t[:, 3] = theta
             x_t[:, 4] = d_theta
-            x_t[:, 5] = 1.0  # 回退：常量，阈值阶跃破坏训练
+            x_t[:, 5] = 1.0  # Visual stimulus present flag
 
         # --- 2. Ground Truth ---
         target_cos, target_sin = -1.0, 0.0 # Default backward
@@ -117,11 +116,11 @@ class CricketDataGenerator:
                 actual_delay = self.vis_delay_steps + noise_steps
                 start = trigs[0] + actual_delay
                 if start < self.seq_len:
-                    # 确保dur为正数
+                    # Ensure positive duration
                     dur = max(int(abs(np.random.normal(0.1, 0.02)) / self.dt), 1)
                     end = min(start + dur, self.seq_len)
 
-                    # 使用高基础概率 + 小幅随机噪声（每个时间步独立）
+                    # High base probability with small per-timestep noise for biological realism
                     window_size = end - start
                     y_t[start:end, 0] = np.clip(0.97 + np.random.uniform(-0.02, 0.02, window_size), 0.0, 1.0)
                     y_t[start:end, 1] = np.clip(0.02 + np.random.uniform(-0.01, 0.01, window_size), 0.0, 1.0)
@@ -137,8 +136,8 @@ class CricketDataGenerator:
 
                 # Jump Probability Logic
                 if is_jump_primed:
-                    # Primed: Jump ~ 39% -> 0.4
-                    # 使用np.clip确保概率值在[0,1]范围内
+                    # Primed condition: Higher jump probability (~40%)
+                    # Clip probabilities to valid range [0, 1]
                     y_t[start:end, 0] = np.clip(0.55 + np.random.normal(0, 0.05), 0.0, 1.0) # Run
                     y_t[start:end, 1] = np.clip(0.45 + np.random.normal(0, 0.05), 0.0, 1.0) # Jump
                 else:

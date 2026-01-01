@@ -16,9 +16,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from src.model import BioMoR_RNN
 from src.cricket_env import CricketEscapeEnv
 
-experiment_time = 800 # 增加到800步(16秒)以获得更长的轨迹
+experiment_time = 800  # Simulation duration: 800 steps (16 seconds)
 
-# 设置publication风格
+# Publication-quality plot style
 plt.rcParams['font.family'] = 'Arial'
 plt.rcParams['font.size'] = 10
 plt.rcParams['axes.linewidth'] = 1.2
@@ -52,15 +52,15 @@ def run_single_trial(model, env, device='cpu'):
         act_np = action_out.squeeze(0).numpy()
         p_run, p_jump, d_cos, d_sin = act_np
 
-        # 记录数据
+        # Record trajectory data
         trajectory['cricket_pos'].append(env.cricket_pos.copy())
         trajectory['predator_pos'].append(env.predator_pos.copy())
         trajectory['distance'].append(np.linalg.norm(env.predator_pos - env.cricket_pos))
         trajectory['theta'].append(np.degrees(obs[3]))
 
-        # [生物学约束] 初始帧的概率应该从0开始
-        # 蟋蟀需要时间来感知和处理威胁（约74ms运动延迟 + 感知时间）
-        INITIAL_FRAMES = 5  # 约100ms (5 * 20ms per frame)
+        # Biological constraint: Initial frames should start from zero probability
+        # Cricket needs time to perceive and process threat (~74ms motor delay + perception time)
+        INITIAL_FRAMES = 5  # ~100ms (5 * 20ms per frame)
         if t < INITIAL_FRAMES:
             trajectory['p_run'].append(0.0)
             trajectory['p_jump'].append(0.0)
@@ -85,10 +85,10 @@ def run_single_trial(model, env, device='cpu'):
 
 def plot_trajectory_panel(trajectories, ax):
     """绘制轨迹面板（类似文献图2A）"""
-    # 配色
+    # Color scheme
     colors = {
-        'cricket': '#2166AC',  # 蓝色
-        'predator': '#B2182B',  # 红色
+        'cricket': '#2166AC',  # Blue
+        'predator': '#B2182B',  # Red
         'caught': '#D6604D',
         'survived': '#4393C3'
     }

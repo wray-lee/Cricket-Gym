@@ -1,10 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-dist_min = 30.0  # 进一步缩短距离以降低生存率
+# Predator initial distance range (cm)
+dist_min = 30.0
 dist_max = 40.0
 
-speed_min = 5.0  # 降低速度以提高生存率到60-70%
+# Predator speed range (cm/s) - tuned for 60-70% survival rate
+speed_min = 5.0
 speed_max = 7.0
 class CricketEscapeEnv:
     def __init__(self, config):
@@ -24,7 +26,7 @@ class CricketEscapeEnv:
         self.is_collided = False
 
         # Physics limits
-        self.run_speed = 35.0   # cm/s (提高到35以获得更长的逃避轨迹)
+        self.run_speed = 35.0   # Cricket running speed (cm/s)
         self.jump_speed = 100.0 # cm/s (Burst)
         self.friction = 0.9     # speed decay
         self.current_speed = 0.0
@@ -36,11 +38,11 @@ class CricketEscapeEnv:
         self.cricket_pos = np.array([50.0, 20.0])
         self.cricket_heading = np.pi / 2 # Facing up (towards danger initially)
 
-        # predator 参数设置
-        initial_distance = np.random.uniform(dist_min, dist_max)  # 距离蟋蟀35-45cm
+        # Initialize predator parameters
+        initial_distance = np.random.uniform(dist_min, dist_max)
         self.predator_pos = np.array([50.0, 20.0 + initial_distance])
 
-        speed = np.random.uniform(speed_min, speed_max)  # 提高速度以增加生存压力
+        speed = np.random.uniform(speed_min, speed_max)
         angle = np.random.uniform(-0.1, 0.1) - (np.pi/2) # Moving down roughly
         self.predator_vel = np.array([np.cos(angle)*speed, np.sin(angle)*speed])
 
@@ -58,9 +60,9 @@ class CricketEscapeEnv:
         move_speed = 0.0
         action_type = "Stay"
 
-        # Thresholds (平衡反应速度和移动能力)
-        RUN_TH = 0.2  # 提高到0.4以进一步延迟反应
-        JUMP_TH = 0.5
+        # Action probability thresholds
+        RUN_TH = 0.2   # Run threshold
+        JUMP_TH = 0.5  # Jump threshold
 
         if p_jump > JUMP_TH:
             move_speed = self.jump_speed
@@ -70,35 +72,30 @@ class CricketEscapeEnv:
             action_type = "Run"
 
         # 2. Decode Direction
-        # [关键修复] 坐标系转换
-        # 训练数据中: Wind表示气流流动方向（捕食者速度方向）
-        #            target表示在Wind坐标系中的逃跑方向
-        # 模型输出的(d_cos, d_sin)是在Wind坐标系中的逃跑方向向量
-        # 需要将其从Wind坐标系旋转到全局坐标系
+        # Coordinate transformation: Model outputs direction in wind-relative frame
+        # Wind frame: aligned with predator velocity direction
+        # Need to transform from wind frame to global frame
 
-        # 计算Wind在全局坐标系中的角度（捕食者速度方向）
+        # Calculate wind direction in global frame (predator velocity direction)
         rel_pos = self.predator_pos - self.cricket_pos
         vel_norm = np.linalg.norm(self.predator_vel)
         if vel_norm > 0.1:
             wind_global_angle = np.arctan2(self.predator_vel[1], self.predator_vel[0])
         else:
-            # 后备：使用位置方向
+            # Fallback: use position-based direction
             wind_global_angle = np.arctan2(rel_pos[1], rel_pos[0])
 
-        # 模型输出在Wind坐标系中的角度
-        # 例如: (cos=-1, sin=0) -> 180度（背离Wind）
-        #      (cos=-0.342, sin=0.940) -> 110度（向左上逃离）
+        # Model output angle in wind-relative frame
+        # Example: (cos=-1, sin=0) -> 180° (away from wind)
         model_angle_in_wind_frame = np.arctan2(d_sin, d_cos)
 
-        # 转换到全局坐标系
-        # 全局逃跑方向 = Wind全局角度 + 180度 + 模型在Wind坐标系中的角度
-        # Wind指向蟋蟀，加180度反转后指向捕食者的反方向
-        # 添加随机噪声以增加轨迹多样性
-        # 使用混合分布：大部分时候小噪声，偶尔大幅偏离
-        if np.random.random() < 0.1:  # 10%概率大幅偏离
-            noise = np.random.uniform(-1.0, 1.0)  # ±1.0弧度 ≈ ±57度
+        # Transform to global frame
+        # Global escape direction = wind angle + 180° + model angle in wind frame
+        # Add noise for trajectory variability (mixed distribution)
+        if np.random.random() < 0.1:  # 10% chance of large deviation
+            noise = np.random.uniform(-1.0, 1.0)  # ±57°
         else:
-            noise = np.random.uniform(-0.3, 0.3)  # ±0.3弧度 ≈ ±17度
+            noise = np.random.uniform(-0.3, 0.3)  # ±17°
         target_heading = wind_global_angle + np.pi + model_angle_in_wind_frame + noise
 
         # 3. Physics Update
@@ -165,10 +162,9 @@ class CricketEscapeEnv:
 
             vis_on = 1.0
 
-        # B. Wind (气流刺激)
-        # [最终修复] Wind表示气流吹来的方向
-        # 在真实实验中：气流从捕食者位置吹向蟋蟀
-        # Wind = 从捕食者指向蟋蟀的方向
+        # B. Wind stimulus
+        # Wind represents airflow direction from predator to cricket
+        # In real experiments: airflow blows from predator position toward cricket
         wind_cos = np.cos(global_angle)
         wind_sin = np.sin(global_angle)
 
