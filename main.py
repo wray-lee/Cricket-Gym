@@ -234,7 +234,7 @@ def main():
             plt.figure()
             plt.plot(loss_history)
             plt.title(f"Training Loss ({args.arch})")
-            plt.savefig(f"loss_{args.arch}.png")
+            plt.savefig(f"outputs/loss_{args.arch}.png")
 
         except KeyboardInterrupt:
             print("Interrupted. Saving model checkpoint...")
