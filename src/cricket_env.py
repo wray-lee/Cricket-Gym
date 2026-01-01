@@ -1,113 +1,201 @@
-import gymnasium as gym
-from gymnasium import spaces
 import numpy as np
-from typing import Dict, Optional, Tuple
+import matplotlib.pyplot as plt
 
-from src.data_generator import CricketDataGenerator
-
-
-class CricketGym(gym.Env):
-    """
-    Gymnasium Environment for Cricket Run/Jump Decision Making.
-
-    Observation: (6,) [Wind_cos, Wind_sin, Audio, Vis_theta, Vis_dtheta, Vis_On]
-    Action (Pred): (4,) [P_run, P_jump, Cos_dir, Sin_dir]
-
-    This env wraps the synthetic data generator.
-    In each step, it feeds the next time-step's sensory data.
-    The 'reward' is calculated as the negative distance to the Ground Truth (Supervised Learning Signal).
-    """
-
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 500}
-
-    def __init__(self, config: Dict):
-        super(CricketGym, self).__init__()
+class CricketEscapeEnv:
+    def __init__(self, config):
         self.cfg = config
+        self.dt = config["simulation"]["dt"]
+        self.width = 100.0  # cm
+        self.height = 100.0 # cm
 
-        # Dimensions
-        self.input_dim = config["model"]["input_dim"]
-        self.output_dim = config["model"]["output_dim"]
+        # State
+        self.cricket_pos = np.array([50.0, 50.0])
+        self.cricket_heading = np.random.uniform(0, 2*np.pi)
 
-        # Define Spaces
-        # Observation: Sensory Inputs (Normalized roughly -1 to 1 or 0 to 1)
-        self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.input_dim,), dtype=np.float32
-        )
+        # Stimulus
+        self.predator_pos = np.array([50.0, 80.0]) # Start top center
+        # [Modification 1] Reduce speed to 5.0 cm/s to allow reaction time > 74ms
+        self.predator_vel = np.array([0.0, -5.0])
+        self.is_collided = False
 
-        # Action: Model Outputs (Probabilities + Direction Vectors)
-        self.action_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(self.output_dim,), dtype=np.float32
-        )
+        # Physics limits
+        self.run_speed = 15.0   # cm/s
+        self.jump_speed = 100.0 # cm/s (Burst)
+        self.friction = 0.9     # speed decay
+        self.current_speed = 0.0
 
-        # Internal State
-        self.generator = CricketDataGenerator(config)
-        self.current_step = 0
-        self.max_steps = 0
-        self.episode_data_x = None  # (Seq, 6)
-        self.episode_data_y = None  # (Seq, 4)
+        # History for plotting
+        self.history = {'cricket': [], 'predator': [], 'action': []}
 
-    def reset(
-        self, seed: Optional[int] = None, options: Optional[Dict] = None
-    ) -> Tuple[np.ndarray, Dict]:
-        """
-        Resets the environment. Generates a new biological trial.
-        """
-        super().reset(seed=seed)
+    def reset(self):
+        self.cricket_pos = np.array([50.0, 30.0])
+        self.cricket_heading = np.pi / 2 # Facing up (towards danger initially)
 
-        # 1. Generate a new trial using the Phase 1 Generator
-        # We can pass options to select specific trial types (e.g., 'visual', 'conflict')
-        trial_type = "mixed"
-        if options and "trial_type" in options:
-            trial_type = options["trial_type"]
+        # [修复] 让捕食者从更远的地方开始，避免初始时刻就有高逃跑概率
+        # 从65-75cm的距离开始接近，给蟋蟀足够的反应时间
+        # 平衡点：既要让Action Probability从低值开始，又要保持合理的生存率
+        initial_distance = np.random.uniform(35.0, 45.0)  # 距离蟋蟀35-45cm
+        self.predator_pos = np.array([50.0, 30.0 + initial_distance])
 
-        self.episode_data_x, self.episode_data_y = self.generator.generate_trial(
-            trial_type
-        )
+        speed = np.random.uniform(5.0, 8.0)
+        angle = np.random.uniform(-0.1, 0.1) - (np.pi/2) # Moving down roughly
+        self.predator_vel = np.array([np.cos(angle)*speed, np.sin(angle)*speed])
 
-        # 2. Reset Counters
-        self.current_step = 0
-        self.max_steps = self.episode_data_x.shape[0]
+        self.current_speed = 0.0
+        self.is_collided = False
+        self.history = {'cricket': [], 'predator': [], 'action': []}
 
-        # 3. Get first observation
-        observation = self.episode_data_x[self.current_step]
-        info = {"trial_type": trial_type}
+        return self._get_obs()
 
-        return observation, info
+    def step(self, action):
+        # action: [P_run, P_jump, Cos, Sin]
+        p_run, p_jump, d_cos, d_sin = action
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict]:
-        """
-        Args:
-            action: The model's prediction for the current timestamp.
-        Returns:
-            observation: The sensory input for the NEXT timestamp.
-        """
-        # 1. Calculate Reward (Negative MSE against Ground Truth)
-        # Ground Truth for THIS step
-        gt = self.episode_data_y[self.current_step]
+        # 1. Decode Intention
+        move_speed = 0.0
+        action_type = "Stay"
 
-        # Simple MSE Loss as negative reward
-        # We separate Probabilities (0-1) and Direction (-1 to 1)
-        mse = np.mean((action - gt) ** 2)
-        reward = -mse
-        # Optional: Add bonus for low error?
-        # reward = 1.0 - mse if mse < 1.0 else 0.0
+        # Thresholds (Lowered slightly to prevent hesitation)
+        RUN_TH = 0.5
+        JUMP_TH = 0.5
 
-        # 2. Advance Time
-        self.current_step += 1
-        terminated = self.current_step >= self.max_steps
-        truncated = False
+        if p_jump > JUMP_TH:
+            move_speed = self.jump_speed
+            action_type = "Jump"
+        elif p_run > RUN_TH:
+            move_speed = self.run_speed
+            action_type = "Run"
 
-        # 3. Get Next Observation
-        if terminated:
-            # If done, return zero observation or last frame (Gym convention requires valid shape)
-            observation = np.zeros(self.input_dim, dtype=np.float32)
+        # 2. Decode Direction
+        # [关键修复] 坐标系转换
+        # 训练数据中: Wind表示气流流动方向（捕食者速度方向）
+        #            target表示在Wind坐标系中的逃跑方向
+        # 模型输出的(d_cos, d_sin)是在Wind坐标系中的逃跑方向向量
+        # 需要将其从Wind坐标系旋转到全局坐标系
+
+        # 计算Wind在全局坐标系中的角度（捕食者速度方向）
+        rel_pos = self.predator_pos - self.cricket_pos
+        vel_norm = np.linalg.norm(self.predator_vel)
+        if vel_norm > 0.1:
+            wind_global_angle = np.arctan2(self.predator_vel[1], self.predator_vel[0])
         else:
-            observation = self.episode_data_x[self.current_step]
+            # 后备：使用位置方向
+            wind_global_angle = np.arctan2(rel_pos[1], rel_pos[0])
 
-        info = {"step": self.current_step, "ground_truth": gt, "mse": mse}
+        # 模型输出在Wind坐标系中的角度
+        # 例如: (cos=-1, sin=0) -> 180度（背离Wind）
+        #      (cos=-0.342, sin=0.940) -> 110度（向左上逃离）
+        model_angle_in_wind_frame = np.arctan2(d_sin, d_cos)
 
-        return observation, reward, terminated, truncated, info
+        # 转换到全局坐标系
+        # 全局逃跑方向 = Wind全局角度 + 180度 + 模型在Wind坐标系中的角度
+        # Wind指向蟋蟀，加180度反转后指向捕食者的反方向
+        target_heading = wind_global_angle + np.pi + model_angle_in_wind_frame
+
+        # 3. Physics Update
+        if move_speed > 0:
+            # Smooth turn (simple)
+            self.cricket_heading = target_heading
+            # Acceleration
+            self.current_speed = move_speed
+        else:
+            # Deceleration
+            self.current_speed *= self.friction
+
+        vel = np.array([np.cos(self.cricket_heading), np.sin(self.cricket_heading)]) * self.current_speed * self.dt
+        self.cricket_pos += vel
+
+        # Predator Update (Constant velocity)
+        self.predator_pos += self.predator_vel * self.dt
+
+        # 4. Check Collision
+        dist = np.linalg.norm(self.cricket_pos - self.predator_pos)
+        if dist < 2.0: # 2cm radius
+            self.is_collided = True
+
+        # 5. Record
+        self.history['cricket'].append(self.cricket_pos.copy())
+        self.history['predator'].append(self.predator_pos.copy())
+        self.history['action'].append(action_type)
+
+        return self._get_obs(), self.is_collided
+
+    def _get_obs(self):
+        # Calculate sensory inputs based on physical state
+
+        # A. Visual (Looming)
+        rel_pos = self.predator_pos - self.cricket_pos
+        dist = np.linalg.norm(rel_pos)
+
+        # Angle of predator relative to cricket heading
+        global_angle = np.arctan2(rel_pos[1], rel_pos[0])
+        ego_angle = global_angle - self.cricket_heading
+        # Normalize to [-pi, pi]
+        ego_angle = (ego_angle + np.pi) % (2 * np.pi) - np.pi
+
+        # Check if predator is in Field of View (+- 120 deg)
+        is_visible = np.abs(ego_angle) < np.deg2rad(120)
+
+        theta = 0.0
+        d_theta = 0.0
+        vis_on = 0.0
+
+        if is_visible and dist > 0.1:
+            # Simple size model: size / dist
+            # Predator size ~ 2cm
+            half_angle = np.arctan(1.0 / dist)
+            theta = 2 * half_angle # rad
+
+            # Approximate d_theta
+            rel_vel = self.predator_vel
+            v_approach = -np.dot(rel_vel, rel_pos / dist)
+            if v_approach > 0:
+                d_theta = (2 * v_approach) / dist
+                # Clip to match bio-constraints (Same as DataGenerator)
+                d_theta = np.clip(d_theta, 0, 4.0)
+
+            vis_on = 1.0
+
+        # B. Wind (气流刺激)
+        # [最终修复] Wind表示气流吹来的方向
+        # 在真实实验中：气流从捕食者位置吹向蟋蟀
+        # Wind = 从捕食者指向蟋蟀的方向
+        wind_cos = np.cos(global_angle)
+        wind_sin = np.sin(global_angle)
+
+        # C. Audio (None for simple chase)
+        audio = 0.0
+
+        # [Wind_x, Wind_y, Audio, Vis_Theta, Vis_dTheta, Vis_On]
+        return np.array([wind_cos, wind_sin, audio, theta, d_theta, vis_on], dtype=np.float32)
 
     def render(self):
-        # Optional visualization
-        pass
+        # Static plot of the trajectory
+        c_hist = np.array(self.history['cricket'])
+        p_hist = np.array(self.history['predator'])
+        acts = self.history['action']
+
+        plt.figure(figsize=(6, 6))
+
+        # [Modification 4] Mark Start point explicitly
+        plt.scatter(c_hist[0,0], c_hist[0,1], c='blue', s=100, label='Start', marker='o')
+
+        plt.plot(c_hist[:,0], c_hist[:,1], 'b-', linewidth=2, label='Cricket Path')
+        plt.plot(p_hist[:,0], p_hist[:,1], 'r--', linewidth=2, label='Predator Path')
+
+        # Mark Actions
+        has_run = False
+        for i, act in enumerate(acts):
+            if act == "Jump":
+                plt.scatter(c_hist[i,0], c_hist[i,1], c='orange', s=30, zorder=3)
+            elif act == "Run" and not has_run:
+                plt.scatter(c_hist[i,0], c_hist[i,1], c='cyan', s=30, zorder=3, marker='x')
+                has_run = True
+
+        plt.xlim(0, 100)
+        plt.ylim(0, 100)
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.title("Closed-Loop Survival Test")
+        plt.savefig("closed_loop_result.png")
+        print("Saved trajectory to closed_loop_result.png")

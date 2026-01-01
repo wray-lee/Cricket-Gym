@@ -1,44 +1,55 @@
 project_name: "Cricket-MoR-Simulation"
-version: "0.1.0"
+version: "0.1.10 (Paper-Aligned)"
 
-# Simulation -- 仿真参数
 simulation:
-    dt: 0.002 # 2ms per step (High temporal resolotion to capature 74ms delay)
-    episode_length_ms: 3000
+  dt: 0.02
+  episode_length_ms: 3000
 
-# visual (Visual Stream - Takeuchi 2025) -- 视觉参数
 visual:
-    looming_threshold_deg: 41.0 # angle threshold to invoke escape response
-    motor_delay_ms: 74.0 # visual to motor delay in ms
-    wind_delay_ms: 20.0  # wind to motor delay in ms
-    jump_probability: 0.02 # visual stimulus seldom invokes jump directly (P <= 0.02)
+  looming_threshold_deg: 41.0
+  motor_delay_ms: 74.0
+  wind_delay_ms: 20.0
+  jump_probability: 0.02
 
-# audio (Audio Stream - Lu et al. 2023)
 audio:
-    tone_freq: 15000 # 15kHz
-    coincidence_window_start: 1000 # 风刺激前 1000ms
-    coincidence_window_end: 2000 # 风刺激前 2000ms (之后失效)
+  tone_freq: 15000
+  coincidence_window_start: 800
+  coincidence_window_end: 1200
 
-# Architecture (Model Input/Output)
 model:
-    input_dim: 6 # [Wind_cos, Wind_sin, Audio_Amp, Visual_theta, Visual_d_theta, Visual_On/Off]
-    output_dim: 4 # [P_run, P_jump, Cos_dir, Sin_dir]
-    hidden_dim: 64
-    rnn_type: "MoR" # Mixture-of-Recursions or GatedRNN
+  input_dim: 6
+  output_dim: 4
+  hidden_dim: 64
+  rnn_type: "MoR"
 
 bio_initialization:
-    # Gate Biases -- 门控偏置
-    bias_reset_rest: -3.0 # Default Forget Gate Bias -- 默认遗忘门偏置
-    bias_update_rest: 2.0 # ** Forget speed rate -- 决定记忆衰减速度 (4.5 ~= 1-2s window) **
+  # --- 基础动力学 ---
+  bias_reset_rest: -2.0
+  bias_update_rest: 3.0
 
-    # 听觉通路 (Audio Pathway - Context)
-    weight_audio_open: -8.0 # 强力开门
-    weight_audio_drive: 1.5 # 适度启动 (Priming)
+  # --- 感官输入权重 ---
+  weight_audio_open: -2.0
+  weight_audio_drive: 5.0
 
-    # 风觉通路 (Wind Pathway - Reflex Trigger via ANs)
-    weight_wind_open: -8.0 # 强力开门
-    weight_wind_drive: 5.0 # 强力尖峰 (Spike Trigger)
+  weight_wind_open: -4.0
+  weight_wind_drive: 2.0
 
-    # 视觉通路 (Visual Pathway - Context)
-    weight_visual_open: -5.0 # 适度开门
-    weight_visual_drive: 0.5 # 视觉驱动强度
+  weight_visual_open: -2.0
+  weight_visual_drive: 0.5
+
+  # --- 内部反馈 (CD) ---
+  weight_corollary_discharge: -5.0
+
+  # --- 输出门控 ---
+  bias_gate: -1.0 # 从-0.5加强到-1.0，降低初始概率
+  weight_gate_policy: 2.5
+  weight_gate_motor: 1.5
+
+  # --- Policy Head ---
+  # [修复初始prob] 从-2.0降至-3.0，确保初始状态prob接近0
+  bias_policy_head: -3.0
+  weight_policy_head: 2.0
+
+  # --- Loss ---
+  loss_dir: 5.0
+  loss_act: 0.05
