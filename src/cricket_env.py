@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-dist_min = 20.0  # 进一步缩短距离以降低生存率
-dist_max = 30.0
+dist_min = 30.0  # 进一步缩短距离以降低生存率
+dist_max = 40.0
 
-speed_min = 6.0  # 显著提高速度以降低生存率
-speed_max = 9.0
+speed_min = 5.0  # 降低速度以提高生存率到60-70%
+speed_max = 7.0
 class CricketEscapeEnv:
     def __init__(self, config):
         self.cfg = config
@@ -24,7 +24,7 @@ class CricketEscapeEnv:
         self.is_collided = False
 
         # Physics limits
-        self.run_speed = 15.0   # cm/s (提高以提高生存率)
+        self.run_speed = 35.0   # cm/s (提高到35以获得更长的逃避轨迹)
         self.jump_speed = 100.0 # cm/s (Burst)
         self.friction = 0.9     # speed decay
         self.current_speed = 0.0
@@ -33,12 +33,12 @@ class CricketEscapeEnv:
         self.history = {'cricket': [], 'predator': [], 'action': []}
 
     def reset(self):
-        self.cricket_pos = np.array([50.0, 30.0])
+        self.cricket_pos = np.array([50.0, 20.0])
         self.cricket_heading = np.pi / 2 # Facing up (towards danger initially)
 
         # predator 参数设置
         initial_distance = np.random.uniform(dist_min, dist_max)  # 距离蟋蟀35-45cm
-        self.predator_pos = np.array([50.0, 30.0 + initial_distance])
+        self.predator_pos = np.array([50.0, 20.0 + initial_distance])
 
         speed = np.random.uniform(speed_min, speed_max)  # 提高速度以增加生存压力
         angle = np.random.uniform(-0.1, 0.1) - (np.pi/2) # Moving down roughly
@@ -59,8 +59,8 @@ class CricketEscapeEnv:
         action_type = "Stay"
 
         # Thresholds (平衡反应速度和移动能力)
-        RUN_TH = 0.4  # 提高到0.4以进一步延迟反应
-        JUMP_TH = 0.8
+        RUN_TH = 0.2  # 提高到0.4以进一步延迟反应
+        JUMP_TH = 0.5
 
         if p_jump > JUMP_TH:
             move_speed = self.jump_speed

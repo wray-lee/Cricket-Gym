@@ -16,6 +16,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from src.model import BioMoR_RNN
 from src.cricket_env import CricketEscapeEnv
 
+experiment_time = 800 # 增加到800步(16秒)以获得更长的轨迹
+
 # 设置publication风格
 plt.rcParams['font.family'] = 'Arial'
 plt.rcParams['font.size'] = 10
@@ -41,7 +43,7 @@ def run_single_trial(model, env, device='cpu'):
         'is_running': []
     }
 
-    for t in range(300):
+    for t in range(experiment_time):
         x_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0).to(device)
 
         with torch.no_grad():
@@ -77,7 +79,7 @@ def run_single_trial(model, env, device='cpu'):
             break
     else:
         trajectory['outcome'] = 'survived'
-        trajectory['survival_time'] = 300
+        trajectory['survival_time'] = experiment_time  # 更新最大生存时间
 
     return trajectory
 
@@ -120,8 +122,8 @@ def plot_trajectory_panel(trajectories, ax):
                 zorder=1)
 
     # 美化
-    ax.set_xlim(20, 80)
-    ax.set_ylim(-10, 80)
+    ax.set_xlim(0, 70)
+    ax.set_ylim(-10, 60)
     ax.set_aspect('equal')
     ax.set_xlabel('X Position (cm)', fontsize=11, fontweight='bold')
     ax.set_ylabel('Y Position (cm)', fontsize=11, fontweight='bold')

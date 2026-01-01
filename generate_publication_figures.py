@@ -130,10 +130,17 @@ def analyze_audio_wind(model, cfg, device='cpu'):
                     y_pred[0, window, 3].mean().item(),
                     y_pred[0, window, 2].mean().item()
                 ))
-                # 归一化角度到0-360度范围
-                if dir_deg < 0:
-                    dir_deg += 360
-                dirs.append(dir_deg)
+                # 计算相对于向后方向(180度)的偏差
+                # arctan2返回-180到180，向后是180度或-180度
+                # 计算最小角度差
+                diff_from_180 = dir_deg - 180
+                diff_from_minus180 = dir_deg - (-180)
+                # 选择绝对值更小的差值
+                if abs(diff_from_180) < abs(diff_from_minus180):
+                    dir_diff = diff_from_180
+                else:
+                    dir_diff = diff_from_minus180
+                dirs.append(dir_diff)
 
                 jump_prob = y_pred[0, window, 1].mean().item()
                 jumps.append(jump_prob)
@@ -162,7 +169,7 @@ def analyze_visual_lv(model, cfg, device='cpu'):
     """Visual l/v分析"""
     print("\n=== Visual l/v Analysis ===")
 
-    lv_values = [20, 40, 60, 80, 100, 120, 140]
+    lv_values = [40, 60, 80, 100, 120, 140]  # 移除20ms，因为模型无响应
     n_trials = 150  # 增加样本数
 
     results = {
@@ -212,7 +219,14 @@ def analyze_visual_lv(model, cfg, device='cpu'):
                         y_pred[0, window, 3].mean().item(),
                         y_pred[0, window, 2].mean().item()
                     ))
-                    dirs.append(dir_deg)
+                    # 计算相对于向后方向(180度)的偏差，与audio-wind保持一致
+                    diff_from_180 = dir_deg - 180
+                    diff_from_minus180 = dir_deg - (-180)
+                    if abs(diff_from_180) < abs(diff_from_minus180):
+                        dir_diff = diff_from_180
+                    else:
+                        dir_diff = diff_from_minus180
+                    dirs.append(dir_diff)
 
                     rt_ms = first_response * cfg['simulation']['dt'] * 1000
                     rts.append(rt_ms)
@@ -256,8 +270,8 @@ def plot_audio_wind_figures(results, filename='fig_audio_wind.png'):
     ax1.set_xticks(range(len(patterns)))
     ax1.set_xticklabels(patterns)
     ax1.set_ylabel('Movement Direction (deg)', fontweight='bold')
-    ax1.axhline(180, color='red', linestyle='--', alpha=0.5, linewidth=1.5, label='Backward')
-    ax1.set_ylim(60, 200)
+    ax1.axhline(0, color='red', linestyle='--', alpha=0.5, linewidth=1.5, label='Backward')
+    ax1.set_ylim(-60, 80)  # 调整y轴范围以匹配文献(-30到60度左右)
     ax1.spines['top'].set_visible(False)
     ax1.spines['right'].set_visible(False)
     ax1.legend(frameon=False)
@@ -335,34 +349,37 @@ def plot_audio_wind_figures(results, filename='fig_audio_wind.png'):
     print(f"✅ Saved: {save_path}")
     plt.close()
 
-def plot_visual_lv_figures(results, filename='fig_visual_lv.png'):
+def plot_visual_lv_figures(results, cfg, filename='fig_visual_lv.png'):
     """绘制Visual l/v图 - 修正散点可见性和response time"""
     fig = plt.figure(figsize=(14, 4))
     gs = GridSpec(1, 3, figure=fig, wspace=0.3, left=0.07, right=0.97)
 
     lv_values = results['lv_values']
 
-    # Panel A: Response Probability
+    # Panel A: Movement Direction (改为与audio-wind一致)
     ax1 = fig.add_subplot(gs[0])
 
-    resp_means = [np.mean(r) for r in results['response_prob']]
-    resp_sems = [stats.sem(r) for r in results['response_prob']]
-
     for i, lv in enumerate(lv_values):
-        y_vals = results['response_prob'][i]
-        x_jitter = np.random.normal(lv, 3.0, len(y_vals))  # 增大jitter
-        ax1.scatter(x_jitter, y_vals, c='lightgray', s=20, alpha=0.45, zorder=1)  # 增大size和alpha
+        dirs = [d for d in results['directions'][i] if not np.isnan(d)]
+        if len(dirs) > 0:
+            x_jitter = np.random.normal(lv, 3.0, len(dirs))
+            ax1.scatter(x_jitter, dirs, c='#92C5DE', s=30, alpha=0.5, zorder=1)
 
-    ax1.bar(lv_values, resp_means, width=10, color='#4393C3',
-            alpha=0.8, edgecolor='black', linewidth=1.2, zorder=2)
-    ax1.errorbar(lv_values, resp_means, yerr=resp_sems,
-                 fmt='none', ecolor='black', capsize=4, linewidth=1.5, zorder=3)
+            mean_dir = np.mean(dirs)
+            sem_dir = stats.sem(dirs)
+            ax1.errorbar([lv], [mean_dir], yerr=[sem_dir],
+                        fmt='D', color='#2166AC', markersize=11,
+                        markeredgecolor='black', markeredgewidth=1.5,
+                        capsize=6, capthick=2.5, linewidth=2, zorder=10,
+                        elinewidth=2.5)
 
     ax1.set_xlabel('l / v (ms)', fontweight='bold')
-    ax1.set_ylabel('Response Probability', fontweight='bold')
-    ax1.set_ylim(0, 1.1)
+    ax1.set_ylabel('Movement Direction (deg)', fontweight='bold')
+    ax1.axhline(0, color='red', linestyle='--', alpha=0.5, linewidth=1.5, label='Backward')
+    ax1.set_ylim(-60, 80)
     ax1.spines['top'].set_visible(False)
     ax1.spines['right'].set_visible(False)
+    ax1.legend(frameon=False)
     ax1.text(-0.12, 1.05, 'A', transform=ax1.transAxes,
             fontsize=14, fontweight='bold')
 
@@ -394,41 +411,46 @@ def plot_visual_lv_figures(results, filename='fig_visual_lv.png'):
     ax2.text(-0.12, 1.05, 'B', transform=ax2.transAxes,
             fontsize=14, fontweight='bold')
 
-    # Panel C: Response Time - 修复版，不过滤0
+    # Panel C: Visual Looming Stimulus示意图
     ax3 = fig.add_subplot(gs[2])
 
-    rt_means, rt_sems, valid_lv = [], [], []
+    # 绘制不同l/v值的looming刺激曲线
+    t_start = -0.5
+    t_collision = 2.0
+    time_axis = np.linspace(t_start, t_collision, 200)
 
-    print("\nResponse Time Debug:")
-    for i, lv in enumerate(lv_values):
-        rt_vals = [t for t in results['response_times'][i] if not np.isnan(t)]  # 只移除NaN，保留0
-        print(f"  l/v={lv}ms: {len(rt_vals)} valid RTs, range=[{min(rt_vals) if rt_vals else 'N/A'}–{max(rt_vals) if rt_vals else 'N/A'}]")
+    # 使用所有6个l/v值，使用渐变色
+    demo_lv_values = lv_values  # [40, 60, 80, 100, 120, 140]
+    # 从深蓝到浅蓝的渐变色
+    colors = plt.cm.Blues(np.linspace(0.4, 0.9, len(demo_lv_values)))
 
-        if len(rt_vals) > 5:
-            rt_means.append(np.mean(rt_vals))
-            rt_sems.append(stats.sem(rt_vals))
-            valid_lv.append(lv)
+    for lv_ms, color in zip(demo_lv_values, colors):
+        lv_sec = lv_ms / 1000.0
+        t_remain = np.clip(t_collision - time_axis, 0.001, None)
+        theta = 2 * np.arctan(lv_sec / t_remain)
+        theta_deg = np.degrees(theta)
 
-            x_jitter = np.random.normal(lv, 3.0, len(rt_vals))
-            ax3.scatter(x_jitter, rt_vals, c='#D6604D', s=20, alpha=0.45, zorder=1)
+        # 只显示collision前的部分
+        mask = time_axis < t_collision
+        ax3.plot(time_axis[mask] * 1000, theta_deg[mask],
+                color=color, linewidth=2.5, label=f'l/v = {lv_ms}ms')
 
-    if len(valid_lv) > 0:
-        ax3.errorbar(valid_lv, rt_means, yerr=rt_sems,
-                     marker='o', color='#2166AC', linewidth=2.5,
-                     markersize=8, capsize=4, zorder=2)
+    # 添加threshold线
+    threshold_deg = cfg['visual']['looming_threshold_deg']
+    ax3.axhline(threshold_deg, color='red', linestyle='--',
+               linewidth=2, alpha=0.7, label=f'Threshold ({threshold_deg}°)')
 
-        if len(valid_lv) > 2:
-            z = np.polyfit(valid_lv, rt_means, 1)
-            p = np.poly1d(z)
-            lv_fit = np.linspace(min(valid_lv), max(valid_lv), 100)
-            ax3.plot(lv_fit, p(lv_fit), 'r--', alpha=0.7, linewidth=2, zorder=3)
-            ax3.text(0.5, 0.95, f'y = {z[0]:.2f}x + {z[1]:.1f}',
-                    transform=ax3.transAxes, fontsize=9, color='red')
+    # 标注motor delay区域
+    ax3.axvspan(1000, 1000 + cfg['visual']['motor_delay_ms'],
+               alpha=0.2, color='orange', label='Motor Delay')
 
-    ax3.set_xlabel('l / v (ms)', fontweight='bold')
-    ax3.set_ylabel('Response Time (ms)', fontweight='bold')
+    ax3.set_xlabel('Time to Collision (ms)', fontweight='bold')
+    ax3.set_ylabel('Visual Angle θ (deg)', fontweight='bold')
+    ax3.set_xlim(-500, 2000)
+    ax3.set_ylim(0, 180)
     ax3.spines['top'].set_visible(False)
     ax3.spines['right'].set_visible(False)
+    ax3.legend(frameon=False, fontsize=7, ncol=2, loc='upper left')
     ax3.grid(True, alpha=0.2)
     ax3.text(-0.12, 1.05, 'C', transform=ax3.transAxes,
             fontsize=14, fontweight='bold')
@@ -464,7 +486,7 @@ def main():
 
     # Visual分析
     visual_results = analyze_visual_lv(model, cfg, device)
-    plot_visual_lv_figures(visual_results)
+    plot_visual_lv_figures(visual_results, cfg)
 
     print("\n🎉 All Figures Generated!")
     print(f"   - {OUTPUT_DIR}\\fig_audio_wind.png")
