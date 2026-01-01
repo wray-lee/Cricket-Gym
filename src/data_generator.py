@@ -113,13 +113,18 @@ class CricketDataGenerator:
         if has_visual:
             trigs = np.where(x_t[:, 3] > self.vis_threshold)[0]
             if len(trigs) > 0:
-                start = trigs[0] + self.vis_delay_steps
+                noise_steps = np.random.randint(-2, 3)
+                actual_delay = self.vis_delay_steps + noise_steps
+                start = trigs[0] + actual_delay
                 if start < self.seq_len:
-                    dur = int(0.1 / self.dt)
+                    # 确保dur为正数
+                    dur = max(int(abs(np.random.normal(0.1, 0.02)) / self.dt), 1)
                     end = min(start + dur, self.seq_len)
 
-                    y_t[start:end, 0] = 0.98
-                    y_t[start:end, 1] = 0.02
+                    # 使用高基础概率 + 小幅随机噪声（每个时间步独立）
+                    window_size = end - start
+                    y_t[start:end, 0] = np.clip(0.97 + np.random.uniform(-0.02, 0.02, window_size), 0.0, 1.0)
+                    y_t[start:end, 1] = np.clip(0.02 + np.random.uniform(-0.01, 0.01, window_size), 0.0, 1.0)
                     y_t[start:end, 2] = target_cos
                     y_t[start:end, 3] = target_sin
 
@@ -133,12 +138,13 @@ class CricketDataGenerator:
                 # Jump Probability Logic
                 if is_jump_primed:
                     # Primed: Jump ~ 39% -> 0.4
-                    y_t[start:end, 0] = 0.6 # Run
-                    y_t[start:end, 1] = 0.4 # Jump
+                    # 使用np.clip确保概率值在[0,1]范围内
+                    y_t[start:end, 0] = np.clip(0.55 + np.random.normal(0, 0.05), 0.0, 1.0) # Run
+                    y_t[start:end, 1] = np.clip(0.45 + np.random.normal(0, 0.05), 0.0, 1.0) # Jump
                 else:
                     # Control/Other: Jump ~ 21% -> 0.2
-                    y_t[start:end, 0] = 0.85 # Run
-                    y_t[start:end, 1] = 0.15 # Jump
+                    y_t[start:end, 0] = np.clip(0.85 + np.random.normal(0, 0.05), 0.0, 1.0) # Run
+                    y_t[start:end, 1] = np.clip(0.15 + np.random.normal(0, 0.05), 0.0, 1.0) # Jump
 
                 y_t[start:end, 2] = target_cos
                 y_t[start:end, 3] = target_sin
