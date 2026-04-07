@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  biomor-training-node:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: biomor_gpu_node
+    # Synchronize the Windows local codebase with the container's workspace
+    # This ensures "develop on Windows, run identically in container" 
+    volumes:
+      - .:/workspace
+    
+    # -----------------------------------
+    # GPU Passthrough Configuration
+    # -----------------------------------
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+              
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - KMP_DUPLICATE_LIB_OK=TRUE
+    
+    # Keeping the container alive gracefully for bash entry, or overriding with a specific script
+    # e.g., run `docker-compose run biomor-training-node bash`
+    command: python test_run.py

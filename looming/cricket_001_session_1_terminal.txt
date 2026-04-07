@@ -1,0 +1,177 @@
+[LoomingEngine] Debug Mode ON — windowed on screen 0
+[LoomingEngine] Debug Mode ON — windowed on screen 0
+Starting Session 1 with 16 trials.
+
+[Ready] Animal adaptation phase. Press [SPACE] to start the first trial, or [ESCAPE] to abort...
+
+=== Experiment Started ===
+Running Trial 1 | Type: looming_wind | l/v: 100ms | Wind: left 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=18.0413 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 1: frames=337, mean=16.77ms, std=1.14ms, min=15.52ms, max=31.01ms
+
+--- ITI before Trial 2/16: 1.9s ---
+Running Trial 2 | Type: looming_wind | l/v: 20ms | Wind: left 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=21.3915 | Delay: 200ms | Dir: left
+  [IFI Diag] Trial 2: frames=67, mean=16.93ms, std=1.86ms, min=15.88ms, max=31.33ms
+
+--- ITI before Trial 3/16: 1.3s ---
+Running Trial 3 | Type: looming_wind | l/v: 20ms | Wind: right 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=23.8244 | Delay: 0ms | Dir: right
+  [IFI Diag] Trial 3: frames=68, mean=16.67ms, std=0.40ms, min=16.01ms, max=17.38ms
+
+--- ITI before Trial 4/16: 1.0s ---
+Running Trial 4 | Type: looming_wind | l/v: 100ms | Wind: right 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=30.3082 | Delay: 200ms | Dir: right
+  [IFI Diag] Trial 4: frames=336, mean=16.77ms, std=1.79ms, min=15.70ms, max=48.45ms
+
+--- ITI before Trial 5/16: 2.0s ---
+Running Trial 5 | Type: baseline_wind | l/v: Nonems | Wind: left 0ms
+[HardwareTrigger] MOCK FIRED: BASELINE_WIND_TRIGGER at t=34.5760 | Delay: 0ms | Dir: left
+
+--- ITI before Trial 6/16: 1.9s ---
+Running Trial 6 | Type: baseline_wind | l/v: Nonems | Wind: right 0ms
+[HardwareTrigger] MOCK FIRED: BASELINE_WIND_TRIGGER at t=40.4946 | Delay: 0ms | Dir: right
+
+--- ITI before Trial 7/16: 1.2s ---
+Running Trial 7 | Type: baseline_visual | l/v: 100ms | Wind: none Nonems
+[HardwareTrigger] MOCK FIRED: BASELINE_VISUAL_NODE at t=49.1086 | Delay: Nonems | Dir: none
+  [IFI Diag] Trial 7: frames=338, mean=16.67ms, std=0.45ms, min=15.25ms, max=18.36ms
+
+--- ITI before Trial 8/16: 1.4s ---
+Running Trial 8 | Type: baseline_visual | l/v: 100ms | Wind: none Nonems
+[HardwareTrigger] MOCK FIRED: BASELINE_VISUAL_NODE at t=56.1413 | Delay: Nonems | Dir: none
+  [IFI Diag] Trial 8: frames=338, mean=16.67ms, std=0.38ms, min=15.78ms, max=17.77ms
+
+--- ITI before Trial 9/16: 1.0s ---
+Running Trial 9 | Type: looming_wind | l/v: 100ms | Wind: left 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=62.8086 | Delay: 200ms | Dir: left
+  [IFI Diag] Trial 9: frames=338, mean=16.67ms, std=0.42ms, min=15.00ms, max=18.49ms
+
+--- ITI before Trial 10/16: 1.0s ---
+Running Trial 10 | Type: looming_wind | l/v: 20ms | Wind: left 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=65.1919 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 10: frames=67, mean=16.68ms, std=0.39ms, min=16.16ms, max=18.42ms
+
+--- ITI before Trial 11/16: 1.2s ---
+Running Trial 11 | Type: looming_wind | l/v: 100ms | Wind: left 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=71.8411 | Delay: 1000ms | Dir: left
+  [IFI Diag] Trial 11: frames=336, mean=16.77ms, std=1.77ms, min=15.60ms, max=48.34ms
+
+--- ITI before Trial 12/16: 1.8s ---
+Running Trial 12 | Type: looming_wind | l/v: 100ms | Wind: right 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=79.2920 | Delay: 0ms | Dir: right
+  [IFI Diag] Trial 12: frames=338, mean=16.67ms, std=0.41ms, min=15.42ms, max=17.76ms
+
+--- ITI before Trial 13/16: 1.0s ---
+Running Trial 13 | Type: looming_wind | l/v: 100ms | Wind: right 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=85.9582 | Delay: 1000ms | Dir: right
+  [IFI Diag] Trial 13: frames=338, mean=16.67ms, std=0.38ms, min=15.65ms, max=17.66ms
+
+--- ITI before Trial 14/16: 1.6s ---
+Running Trial 14 | Type: looming_wind | l/v: 20ms | Wind: left 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=88.9247 | Delay: 1000ms | Dir: left
+  [IFI Diag] Trial 14: frames=68, mean=16.67ms, std=0.35ms, min=16.02ms, max=17.30ms
+
+--- ITI before Trial 15/16: 1.8s ---
+Running Trial 15 | Type: looming_wind | l/v: 20ms | Wind: right 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=91.8746 | Delay: 200ms | Dir: right
+  [IFI Diag] Trial 15: frames=68, mean=16.67ms, std=0.42ms, min=15.78ms, max=17.62ms
+
+--- ITI before Trial 16/16: 1.7s ---
+Running Trial 16 | Type: looming_wind | l/v: 20ms | Wind: right 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=94.7252 | Delay: 1000ms | Dir: right
+  [IFI Diag] Trial 16: frames=67, mean=16.68ms, std=0.39ms, min=15.91ms, max=17.88ms
+20.3863 	WARNING 	t of last frame was 12512.85ms (=1/0)
+24.1027 	WARNING 	t of last frame was 31.01ms (=1/32)
+24.1877 	WARNING 	t of last frame was 29.40ms (=1/34)
+26.0538 	WARNING 	t of last frame was 31.81ms (=1/31)
+28.4192 	WARNING 	Multiple dropped frames have occurred - I'll stop bothering you about them!
+[GroundTruthLogger] Ground Truth data saved successfully to C:\Users\Wray\Desktop\Projects\Cricket-Gym\looming\cricket_001_session_1.csv
+[LoomingEngine] Debug Mode ON — windowed on screen 0
+Starting Session 1 with 16 trials.
+
+[Ready] Animal adaptation phase. Press [SPACE] to start the first trial, or [ESCAPE] to abort...
+
+=== Experiment Started ===
+Running Trial 1 | Type: looming_wind | l/v: 100ms | Wind: left 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=9.6180 | Delay: 1000ms | Dir: left
+  [IFI Diag] Trial 1: frames=338, mean=16.67ms, std=0.34ms, min=15.77ms, max=18.56ms
+
+--- ITI before Trial 2/16: 1.0s ---
+Running Trial 2 | Type: baseline_visual | l/v: 100ms | Wind: none Nonems
+[HardwareTrigger] MOCK FIRED: BASELINE_VISUAL_NODE at t=16.3016 | Delay: Nonems | Dir: none
+  [IFI Diag] Trial 2: frames=335, mean=16.82ms, std=2.67ms, min=15.53ms, max=64.94ms
+
+--- ITI before Trial 3/16: 1.5s ---
+Running Trial 3 | Type: looming_wind | l/v: 20ms | Wind: right 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=19.1687 | Delay: 1000ms | Dir: right
+  [IFI Diag] Trial 3: frames=68, mean=16.68ms, std=0.36ms, min=15.93ms, max=17.47ms
+
+--- ITI before Trial 4/16: 1.8s ---
+Running Trial 4 | Type: looming_wind | l/v: 20ms | Wind: left 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=22.1520 | Delay: 200ms | Dir: left
+  [IFI Diag] Trial 4: frames=67, mean=16.70ms, std=0.48ms, min=15.81ms, max=19.11ms
+
+--- ITI before Trial 5/16: 1.1s ---
+Running Trial 5 | Type: looming_wind | l/v: 100ms | Wind: right 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=28.7186 | Delay: 1000ms | Dir: right
+  [IFI Diag] Trial 5: frames=338, mean=16.67ms, std=0.39ms, min=15.20ms, max=17.98ms
+
+--- ITI before Trial 6/16: 1.8s ---
+Running Trial 6 | Type: baseline_visual | l/v: 100ms | Wind: none Nonems
+[HardwareTrigger] MOCK FIRED: BASELINE_VISUAL_NODE at t=36.2015 | Delay: Nonems | Dir: none
+  [IFI Diag] Trial 6: frames=338, mean=16.67ms, std=0.37ms, min=15.58ms, max=17.76ms
+
+--- ITI before Trial 7/16: 1.0s ---
+Running Trial 7 | Type: looming_wind | l/v: 100ms | Wind: left 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=42.8853 | Delay: 200ms | Dir: left
+  [IFI Diag] Trial 7: frames=338, mean=16.67ms, std=0.36ms, min=15.61ms, max=17.78ms
+
+--- ITI before Trial 8/16: 1.7s ---
+Running Trial 8 | Type: baseline_wind | l/v: Nonems | Wind: left 0ms
+[HardwareTrigger] MOCK FIRED: BASELINE_WIND_TRIGGER at t=46.9204 | Delay: 0ms | Dir: left
+
+--- ITI before Trial 9/16: 1.1s ---
+Running Trial 9 | Type: looming_wind | l/v: 20ms | Wind: left 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=51.1352 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 9: frames=68, mean=16.68ms, std=0.49ms, min=15.36ms, max=17.88ms
+
+--- ITI before Trial 10/16: 1.8s ---
+Running Trial 10 | Type: baseline_wind | l/v: Nonems | Wind: right 0ms
+[HardwareTrigger] MOCK FIRED: BASELINE_WIND_TRIGGER at t=54.9875 | Delay: 0ms | Dir: right
+
+--- ITI before Trial 11/16: 1.3s ---
+Running Trial 11 | Type: looming_wind | l/v: 20ms | Wind: right 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=59.4016 | Delay: 0ms | Dir: right
+  [IFI Diag] Trial 11: frames=68, mean=16.67ms, std=0.40ms, min=15.89ms, max=17.47ms
+
+--- ITI before Trial 12/16: 1.4s ---
+Running Trial 12 | Type: looming_wind | l/v: 100ms | Wind: right 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=66.2519 | Delay: 200ms | Dir: right
+  [IFI Diag] Trial 12: frames=336, mean=16.77ms, std=1.74ms, min=14.76ms, max=47.63ms
+
+--- ITI before Trial 13/16: 1.6s ---
+Running Trial 13 | Type: looming_wind | l/v: 20ms | Wind: right 200ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=69.2692 | Delay: 200ms | Dir: right
+  [IFI Diag] Trial 13: frames=68, mean=16.69ms, std=0.58ms, min=14.63ms, max=18.60ms
+
+--- ITI before Trial 14/16: 1.0s ---
+Running Trial 14 | Type: looming_wind | l/v: 100ms | Wind: left 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=75.7348 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 14: frames=338, mean=16.67ms, std=0.47ms, min=14.15ms, max=19.07ms
+
+--- ITI before Trial 15/16: 1.8s ---
+Running Trial 15 | Type: looming_wind | l/v: 100ms | Wind: right 0ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=83.2015 | Delay: 0ms | Dir: right
+  [IFI Diag] Trial 15: frames=338, mean=16.67ms, std=0.38ms, min=15.77ms, max=17.61ms
+
+--- ITI before Trial 16/16: 1.7s ---
+Running Trial 16 | Type: looming_wind | l/v: 20ms | Wind: left 1000ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=86.2355 | Delay: 1000ms | Dir: left
+  [IFI Diag] Trial 16: frames=68, mean=16.67ms, std=0.32ms, min=15.90ms, max=17.51ms
+19.8469 	WARNING 	t of last frame was 4129.31ms (=1/0)
+30.1638 	WARNING 	t of last frame was 64.94ms (=1/15)
+36.6638 	WARNING 	t of last frame was 31.16ms (=1/32)
+66.7872 	WARNING 	t of last frame was 21.19ms (=1/47)
+78.9304 	WARNING 	Multiple dropped frames have occurred - I'll stop bothering you about them!
+[GroundTruthLogger] Ground Truth data saved successfully to C:\Users\Wray\Desktop\Projects\Cricket-Gym\looming\cricket_001_session_1.csv
