@@ -3,3 +3,5 @@ models/
 #outputs/
 src/__pycache__
 debug/
+looming/*.csv
+looming/*.txt
