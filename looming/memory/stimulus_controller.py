@@ -36,63 +36,35 @@ from psychopy.hardware import keyboard
 
 def generate_trial_matrix() -> List[Dict[str, Any]]:
     """
-    Generates a randomized sequence of exactly 18 trials for a single session
-    with absolute left/right physical balance.
-
-    Independent variables:
-      - wind_dir: 'left' or 'right' (air-puff direction)
-      - target_angle_deg: the looming visual angle (deg) at which the wind
-        trigger fires.  Seven levels: 15, 25, 35, 40.8, 48, 55.1, 90.
-
-    Trial composition (18 total):
-      14 × looming_wind    — 7 angles × 2 wind directions
-       2 × baseline_visual — pure looming, no wind (1 left screen, 1 right)
-       2 × baseline_wind   — no looming, wind at sliding-window delay
-                             (1 left wind, 1 right wind)
+    Generates a randomized sequence of 16 trials according to the 8 core conditions 
+    repeated twice for 'left' and 'right' wind directions.
     """
-    trials: List[Dict[str, Any]] = []
-
-    # ------------------------------------------------------------------
-    # 14 cross-modal trials: Looming + Wind
-    # ------------------------------------------------------------------
-    target_angles = [15, 25, 35, 40.8, 48, 55.1, 90]
-
-    for angle in target_angles:
+    trials = []
+    
+    # The 8 core conditions defined in the BioMoR paradigm specification
+    core_conditions = [
+        {'type': 'baseline_visual', 'lv_ratio_ms': 100,  'wind_delay_ms': None},
+        {'type': 'baseline_wind',   'lv_ratio_ms': None, 'wind_delay_ms': 0},
+        {'type': 'looming_wind',    'lv_ratio_ms': 100,  'wind_delay_ms': 0},
+        {'type': 'looming_wind',    'lv_ratio_ms': 100,  'wind_delay_ms': 200},
+        {'type': 'looming_wind',    'lv_ratio_ms': 100,  'wind_delay_ms': 1000},
+        {'type': 'looming_wind',    'lv_ratio_ms': 20,   'wind_delay_ms': 0},
+        {'type': 'looming_wind',    'lv_ratio_ms': 20,   'wind_delay_ms': 200},
+        {'type': 'looming_wind',    'lv_ratio_ms': 20,   'wind_delay_ms': 1000},
+    ]
+    
+    for cond in core_conditions:
         for direction in ['left', 'right']:
-            trials.append({
-                'type': 'looming_wind',
-                'wind_dir': direction,
-                'target_angle_deg': angle,
-                'lv_ratio_ms': 100,
-            })
-
-    # ------------------------------------------------------------------
-    # 2 baseline_visual: pure looming, no wind.
-    # One presented on the left screen, one on the right, for visual
-    # balance.  screen_side overrides the default routing.
-    # ------------------------------------------------------------------
-    for side in ['left', 'right']:
-        trials.append({
-            'type': 'baseline_visual',
-            'wind_dir': 'none',
-            'screen_side': side,
-            'target_angle_deg': None,
-            'lv_ratio_ms': 100,
-        })
-
-    # ------------------------------------------------------------------
-    # 2 baseline_wind: no looming, wind with random sliding-window delay.
-    # One left wind, one right wind — absolute directional balance.
-    # ------------------------------------------------------------------
-    for direction in ['left', 'right']:
-        trials.append({
-            'type': 'baseline_wind',
-            'wind_dir': direction,
-            'target_angle_deg': None,
-            'lv_ratio_ms': None,
-        })
-
-    assert len(trials) == 18, f"Expected 18 trials, got {len(trials)}"
+            trial = cond.copy()
+            # If baseline visual, no wind is physically required, but mechanically 
+            # we assign none to prevent errors or unexpected hardware triggers.
+            if trial['type'] == 'baseline_visual':
+                trial['wind_dir'] = 'none' 
+            else:
+                trial['wind_dir'] = direction
+            trials.append(trial)
+            
+    # Randomize the 16 trials to avoid pattern recognition
     random.shuffle(trials)
     return trials
 
@@ -220,6 +192,8 @@ class LoomingEngine:
         self.exp_info = exp_info
 
         # ---- Parse GUI fields ----
+        self.target_angle_deg = float(self.exp_info['Target Visual Angle (deg)'])
+
         iti_range = self.exp_info['ITI Range (sec)'].split('-')
         self.iti_min = float(iti_range[0])
         self.iti_max = float(iti_range[1])
@@ -472,8 +446,8 @@ class LoomingEngine:
                         self._wait_iti(iti_dur)
 
                     print(f"Running Trial {trial_idx + 1} | Type: {trial['type']} "
-                          f"| Angle: {trial.get('target_angle_deg', '-')}° "
-                          f"| Wind: {trial['wind_dir']}")
+                          f"| l/v: {trial['lv_ratio_ms']}ms "
+                          f"| Wind: {trial['wind_dir']} {trial['wind_delay_ms']}ms")
                     self._run_single_trial(trial_idx, trial)
 
                 # ---- Save this session's CSV immediately ----
@@ -626,16 +600,12 @@ class LoomingEngine:
             active_phys_stim : physical Circle (None in debug mode).
             side_label       : 'left' or 'right'.
         """
-        # screen_side provides an explicit override for baseline_visual
-        # trials that have no wind but must be routed to a specific screen.
-        screen_side = trial.get('screen_side')
         wind_dir = trial.get('wind_dir', 'none')
-
-        if screen_side == 'right' or wind_dir == 'right':
+        if wind_dir == 'right':
             return (self.stim_ctrl_right,
                     self.win_right, self.stim_right, 'right')
         else:
-            # 'left', 'none', or explicit screen_side='left'
+            # 'left' or 'none' (baseline_visual defaults to left screen)
             return (self.stim_ctrl_left,
                     self.win_left, self.stim_left, 'left')
 
@@ -644,22 +614,7 @@ class LoomingEngine:
     # ------------------------------------------------------------------
     def _run_single_trial(self, trial_idx: int, trial: Dict[str, Any]):
         t_start = self.clock.getTime()
-
-        # Pre-compute ttc_at_target for Ground Truth logging
-        _gt_target_angle = trial.get('target_angle_deg')
-        _gt_ttc_at_target = None
-        if _gt_target_angle is not None and trial.get('lv_ratio_ms') is not None:
-            _lv = trial['lv_ratio_ms'] / 1000.0
-            _gt_ttc_at_target = _lv / math.tan(math.radians(_gt_target_angle) / 2)
-
-        self.logger.log_event(
-            "trial_start", t_start,
-            trial_index=trial_idx,
-            target_angle_deg=_gt_target_angle,
-            ttc_at_target=_gt_ttc_at_target,
-            **{k: v for k, v in trial.items()
-               if k != 'target_angle_deg'}  # avoid duplicate key
-        )
+        self.logger.log_event("trial_start", t_start, trial_index=trial_idx, **trial)
 
         trigger_sent = False
 
@@ -677,13 +632,7 @@ class LoomingEngine:
             # Precompute critical time-to-collision points
             start_ttc = lv_ratio_sec / math.tan(math.radians(self.initial_angle_deg) / 2)
             end_ttc   = lv_ratio_sec / math.tan(math.radians(self.max_angle_deg) / 2)
-            # Per-trial target angle → compute trigger TTC via  TTC = (l/v) / tan(θ/2)
-            target_angle_deg = trial.get('target_angle_deg')
-            t_trigger = None
-            if trial['type'] == 'looming_wind' and target_angle_deg is not None:
-                t_trigger = lv_ratio_sec / math.tan(math.radians(target_angle_deg) / 2)
-                print(f"  [TTC] target_angle={target_angle_deg}° → "
-                      f"t_trigger={t_trigger*1000:.2f}ms (TTC from collision)")
+            ttc_at_target = lv_ratio_sec / math.tan(math.radians(self.target_angle_deg) / 2)
 
             # ===========================================================
             # Looming expansion
@@ -715,20 +664,16 @@ class LoomingEngine:
                     break
 
                 # Threshold trigger (target angle reached)
-                # Threshold trigger: fire wind when TTC reaches t_trigger
-                if not trigger_sent and t_trigger is not None and ttc <= t_trigger:
+                if not trigger_sent and ttc <= ttc_at_target:
+                    event_str = ("LOOMING_WIND_NODE" if trial['type'] == 'looming_wind'
+                                 else "BASELINE_VISUAL_NODE")
                     self.trigger_interface.send_trigger(
-                        event_code="LOOMING_WIND_NODE",
+                        event_code=event_str,
                         current_time=current_time,
-                        wind_delay_ms=0,
+                        wind_delay_ms=trial['wind_delay_ms'],
                         wind_direction=trial['wind_dir']
                     )
-                    self.logger.log_event(
-                        "target_angle_reached", current_time,
-                        ttc=ttc,
-                        target_angle_deg=target_angle_deg,
-                        computed_t_trigger=t_trigger
-                    )
+                    self.logger.log_event("target_angle_reached", current_time, ttc=ttc)
                     trigger_sent = True
 
                 # Compute current angular size
@@ -781,43 +726,24 @@ class LoomingEngine:
         # Physical window (production) is also flipped to stay alive.
         # ============================================================
         elif trial['type'] == 'baseline_wind':
-            # Sliding Window Baseline: random delay sampled from the
-            # TTC range corresponding to θ=90° (~100ms) through θ=15° (~760ms).
-            # This controls for habituation to standing duration.
-            random_delay_sec = random.uniform(0.1, 0.76)
-            # Post-trigger observation: 1–2 s after the wind fires,
-            # then end the trial.  Total ≈ random_delay + post_observe.
-            post_trigger_wait = random.uniform(1.0, 2.0)
-            print(f"  [Baseline Wind] Sliding-window delay: "
-                  f"{random_delay_sec*1000:.0f}ms | "
-                  f"post-trigger obs: {post_trigger_wait:.2f}s")
-            self.logger.log_event("baseline_wind_start", self.clock.getTime(),
-                                  random_delay_sec=random_delay_sec)
-
             t0 = self.clock.getTime()
-            _wind_fired_time = None  # track when trigger actually fires
 
             while True:
                 current_time = self.clock.getTime()
                 elapsed = current_time - t0
 
-                # End trial after post-trigger observation period
-                if _wind_fired_time is not None and \
-                   (current_time - _wind_fired_time) >= post_trigger_wait:
+                if elapsed >= 4.0:
                     break
 
-                # Fire wind trigger after the random delay
-                if elapsed >= random_delay_sec and not trigger_sent:
+                if elapsed >= 2.0 and not trigger_sent:
                     self.trigger_interface.send_trigger(
                         event_code="BASELINE_WIND_TRIGGER",
                         current_time=current_time,
-                        wind_delay_ms=0,
+                        wind_delay_ms=trial['wind_delay_ms'],
                         wind_direction=trial['wind_dir']
                     )
-                    self.logger.log_event("wind_triggered", current_time,
-                                          random_delay_sec=random_delay_sec)
+                    self.logger.log_event("wind_triggered", current_time)
                     trigger_sent = True
-                    _wind_fired_time = current_time
 
                 # Control panel (static baseline)
                 self.stim_ctrl_left.draw()
@@ -878,6 +804,10 @@ def launch_experiment_gui() -> Optional[Dict[str, Any]]:
                  label='Total Sessions to run:',
                  initial=1,
                  tip='Number of sessions to run consecutively')
+    dlg.addField('Target Visual Angle (deg)',
+                 label='Target Visual Angle (deg):',
+                 initial=30,
+                 tip='Enter the target visual angle')
     dlg.addField('ITI Range (sec)',
                  label='ITI Range (sec):',
                  initial='60-90',
