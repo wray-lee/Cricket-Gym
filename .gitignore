@@ -5,3 +5,4 @@ src/__pycache__
 debug/
 looming/*.csv
 looming/*.txt
+looming/__pycache__
