@@ -509,14 +509,9 @@ class LoomingEngine:
     # ------------------------------------------------------------------
     def _render_static_baseline(self, extra_ctrl_stims: list = None):
         """
-        Render the Blank ITI resting state on all active windows:
-        a completely clean mid-gray background with NO visual stimuli.
-
-        This guarantees that the physical screens (win_left, win_right)
-        show an absolutely clean gray surface during rest periods
-        (Wait-for-Start, ITI, ISI, post-experiment).  The looming
-        stimulus will therefore "pop-in" at initial_angle_deg (2°)
-        on the very first frame of a looming trial.
+        Render the resting state on all active windows:
+        control panel mirrors at initial_angle_deg size, plus physical
+        windows (if production mode).
 
         Parameters
         ----------
@@ -525,7 +520,11 @@ class LoomingEngine:
             the single flip (e.g. ISI countdown text).  This avoids a
             double-flip flicker.
         """
-        # ---- Control panel: labels only (no circles) ----
+        # ---- Control panel: reset both mirrors to initial size ----
+        self.stim_ctrl_left.radius = self.initial_angle_deg / 2.0
+        self.stim_ctrl_right.radius = self.initial_angle_deg / 2.0
+        self.stim_ctrl_left.draw()
+        self.stim_ctrl_right.draw()
         self.label_left.draw()
         self.label_right.draw()
         if extra_ctrl_stims:
@@ -533,9 +532,13 @@ class LoomingEngine:
                 stim.draw()
         self.win_control.flip()
 
-        # ---- Physical windows: blank flip (production only) ----
+        # ---- Physical windows: reset & flip (production only) ----
         if not self.debug_mode:
+            self.stim_left.radius = self.initial_angle_deg / 2.0
+            self.stim_right.radius = self.initial_angle_deg / 2.0
+            self.stim_left.draw()
             self.win_left.flip()
+            self.stim_right.draw()
             self.win_right.flip()
 
     # ------------------------------------------------------------------
@@ -773,7 +776,8 @@ class LoomingEngine:
 
                 # ---- Control panel mirror (always) ----
                 active_ctrl_stim.radius = theta_deg / 2.0
-                active_ctrl_stim.draw()  # Only draw the active stim to avoid stale-radius occlusion
+                self.stim_ctrl_left.draw()
+                self.stim_ctrl_right.draw()
                 self.label_left.draw()
                 self.label_right.draw()
                 ctrl_flip = self.win_control.flip()
@@ -810,8 +814,8 @@ class LoomingEngine:
 
         # ============================================================
         # BASELINE WIND  (pure air-pump control — NO visual change)
-        # The screen remains completely blank (gray bg, no disc) while
-        # only the hardware trigger fires after a random delay.
+        # The resting state (gray bg + stationary initial disc) is
+        # maintained throughout; only the hardware trigger fires.
         # Control panel is flipped every frame to stay alive.
         # Physical window (production) is also flipped to stay alive.
         # ============================================================
@@ -853,13 +857,16 @@ class LoomingEngine:
                     trigger_sent = True
                     _wind_fired_time = current_time
 
-                # Control panel (blank baseline — no circles)
+                # Control panel (static baseline)
+                self.stim_ctrl_left.draw()
+                self.stim_ctrl_right.draw()
                 self.label_left.draw()
                 self.label_right.draw()
                 self.win_control.flip()
 
-                # Physical window (production only — blank baseline)
+                # Physical window (production only — static baseline)
                 if not self.debug_mode and active_phys_win is not None:
+                    active_phys_stim.draw()
                     active_phys_win.flip()
 
                 if self.kb.getKeys(['escape']):
