@@ -23,6 +23,13 @@ Core capabilities:
 3. Exact VSync-locked timing via PsychoPy (sub-millisecond precision).
 4. Modular Hardware Mock Interface for external triggering (e.g., Arduino).
 5. Precision logging system tracking paradigm configurations down to VSyncs.
+
+=== 重构说明 (Refactoring Notes) ===
+  - 引入"单范式锁定"机制：每个被试 (Subject) 仅运行 GUI 中选定的一种范式。
+  - Trial Matrix 重构为纯空间随机化：18 试次 = 9 Left + 9 Right，完全打乱。
+  - 稳态视觉基线 (2° 黑点)：全部 9 种范式（含 Baseline Wind）的所有
+    空闲状态均显示灰底 + 2° 黑点，作为归一化基线并消除 Startle Reflex。
+    (pattern.md: "Begin Degree: 2°（as baseline on the same time）")
 """
 
 import math
@@ -34,72 +41,146 @@ import pandas as pd
 from psychopy import visual, core, event, gui, monitors
 from psychopy.hardware import keyboard
 
+
+# ==============================================================================
+# 范式定义 (Pattern Definitions)
+# ==============================================================================
+# 定义 9 种实验范式的完整参数表。
+# 每种范式用一个唯一的 key 标识，在 GUI 下拉菜单中显示完整名称。
+# 'type' 字段决定 Trial 运行逻辑（与原有 baseline_visual / looming_wind /
+# baseline_wind 三分支完全对应）。
+# ==============================================================================
+
+EXPERIMENT_PATTERNS = {
+    'Baseline Visual (仅视觉，无风)': {
+        'type': 'baseline_visual',
+        'target_ttc_ms': None,
+        'lv_ratio_ms': 100,
+        'description': '纯视觉 Looming，不触发任何风刺激',
+    },
+    'Baseline Wind (仅风，随机延迟)': {
+        'type': 'baseline_wind',
+        'target_ttc_ms': None,
+        'lv_ratio_ms': None,
+        'description': '纯风刺激，无视觉 Looming，屏幕保持 2° 黑点基线',
+    },
+    'Looming + Wind (TTC -373ms / 30°)': {
+        'type': 'looming_wind',
+        'target_ttc_ms': -373,
+        'lv_ratio_ms': 100,
+        'description': 'Looming + 风，风在碰撞前 373ms 触发 (θ≈30°)',
+    },
+    'Looming + Wind (TTC -308ms / 36°)': {
+        'type': 'looming_wind',
+        'target_ttc_ms': -308,
+        'lv_ratio_ms': 100,
+        'description': 'Looming + 风，风在碰撞前 308ms 触发 (θ≈36°)',
+    },
+    'Looming + Wind (TTC -261ms / 42°)': {
+        'type': 'looming_wind',
+        'target_ttc_ms': -261,
+        'lv_ratio_ms': 100,
+        'description': 'Looming + 风，风在碰撞前 261ms 触发 (θ≈42°)',
+    },
+    'Looming + Wind (TTC -225ms / 48°)': {
+        'type': 'looming_wind',
+        'target_ttc_ms': -225,
+        'lv_ratio_ms': 100,
+        'description': 'Looming + 风，风在碰撞前 225ms 触发 (θ≈48°)',
+    },
+    'Looming + Wind (TTC -119ms / 80°)': {
+        'type': 'looming_wind',
+        'target_ttc_ms': -119,
+        'lv_ratio_ms': 100,
+        'description': 'Looming + 风，风在碰撞前 119ms 触发 (θ≈80°)',
+    },
+    'Looming + Wind (TTC 0ms / 180°)': {
+        'type': 'looming_wind',
+        'target_ttc_ms': 0,
+        'lv_ratio_ms': 100,
+        'description': 'Looming + 风，风在碰撞瞬间触发 (θ=180°)',
+    },
+    'Looming + Wind (TTC +200ms)': {
+        'type': 'looming_wind',
+        'target_ttc_ms': 200,
+        'lv_ratio_ms': 100,
+        'description': 'Looming + 风，风在碰撞后 200ms 触发',
+    },
+}
+
+# GUI 下拉列表的显示顺序（与 pattern.md 定义一致）
+PATTERN_CHOICES = list(EXPERIMENT_PATTERNS.keys())
+
+
 # ==============================================================================
 # Module 2: Paradigm & Trial Matrix Generator
 # ==============================================================================
 
-def generate_trial_matrix() -> List[Dict[str, Any]]:
+def generate_trial_matrix(pattern_key: str) -> List[Dict[str, Any]]:
     """
-    Generates a randomized sequence of exactly 18 trials for a single session
-    with absolute left/right physical balance.
+    【重构】单范式试次矩阵生成器。
 
-    Independent variables:
-      - wind_dir: 'left' or 'right' (air-puff direction)
-      - target_ttc_ms: signed time-to-collision (ms) at which the wind
-        trigger fires.  Negative = before collision, 0 = at collision,
-        positive = after collision.
-        Seven levels: -373, -308, -261, -225, -119, 0, 200.
+    根据 GUI 中选定的唯一范式 (pattern_key)，生成恰好 18 个试次，
+    并在左右方向上实现绝对空间平衡（9 Left + 9 Right），然后完全打乱。
 
-    Trial composition (18 total):
-      14 × looming_wind    — 7 TTC levels × 2 wind directions
-       2 × baseline_visual — pure looming, no wind (1 left screen, 1 right)
-       2 × baseline_wind   — no looming, wind at random delay
-                             (1 left wind, 1 right wind)
+    重构要点：
+    ----------
+    - 原逻辑：在 18 个试次中混合所有 7 种 TTC + 2 个视觉基线 + 2 个风基线。
+    - 新逻辑：一个 Session 只包含一种范式的 18 个试次，
+      唯一的随机化维度是空间方向（left/right）。
+    - 对于 baseline_visual 类型：wind_dir 设为 'none'，
+      但通过 screen_side 字段控制刺激呈现在左屏还是右屏，
+      确保 9 次左屏 + 9 次右屏的空间平衡。
+    - 对于 baseline_wind 和 looming_wind 类型：
+      wind_dir 直接控制风的方向和屏幕路由。
+
+    Parameters
+    ----------
+    pattern_key : str
+        EXPERIMENT_PATTERNS 中定义的范式键名，
+        例如 'Looming + Wind (TTC -373ms / 30°)'。
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        包含 18 个完全打乱的试次字典列表。
     """
+    if pattern_key not in EXPERIMENT_PATTERNS:
+        raise ValueError(f"未知范式: '{pattern_key}'。"
+                         f"可用范式: {list(EXPERIMENT_PATTERNS.keys())}")
+
+    pattern = EXPERIMENT_PATTERNS[pattern_key]
+    trial_type = pattern['type']
+    target_ttc_ms = pattern['target_ttc_ms']
+    lv_ratio_ms = pattern['lv_ratio_ms']
+
     trials: List[Dict[str, Any]] = []
 
     # ------------------------------------------------------------------
-    # 14 cross-modal trials: Looming + Wind
-    # Sign convention: negative = before collision, positive = after.
+    # 生成 18 个试次：9 Left + 9 Right，确保绝对空间平衡
     # ------------------------------------------------------------------
-    target_ttcs_ms = [-373, -308, -261, -225, -119, 0, 200]
+    directions = ['left'] * 9 + ['right'] * 9
 
-    for ttc_ms in target_ttcs_ms:
-        for direction in ['left', 'right']:
-            trials.append({
-                'type': 'looming_wind',
-                'wind_dir': direction,
-                'target_ttc_ms': ttc_ms,
-                'lv_ratio_ms': 100,
-            })
+    for direction in directions:
+        trial_dict: Dict[str, Any] = {
+            'type': trial_type,
+            'target_ttc_ms': target_ttc_ms,
+            'lv_ratio_ms': lv_ratio_ms,
+        }
 
-    # ------------------------------------------------------------------
-    # 2 baseline_visual: pure looming, no wind.
-    # One presented on the left screen, one on the right, for visual
-    # balance.  screen_side overrides the default routing.
-    # ------------------------------------------------------------------
-    for side in ['left', 'right']:
-        trials.append({
-            'type': 'baseline_visual',
-            'wind_dir': 'none',
-            'screen_side': side,
-            'target_ttc_ms': None,
-            'lv_ratio_ms': 100,
-        })
+        if trial_type == 'baseline_visual':
+            # 纯视觉试次：无风，但通过 screen_side 控制呈现屏幕
+            trial_dict['wind_dir'] = 'none'
+            trial_dict['screen_side'] = direction
+        else:
+            # baseline_wind 或 looming_wind：wind_dir 同时控制风向和屏幕路由
+            trial_dict['wind_dir'] = direction
 
-    # ------------------------------------------------------------------
-    # 2 baseline_wind: no looming, wind with random delay.
-    # One left wind, one right wind — absolute directional balance.
-    # ------------------------------------------------------------------
-    for direction in ['left', 'right']:
-        trials.append({
-            'type': 'baseline_wind',
-            'wind_dir': direction,
-            'target_ttc_ms': None,
-            'lv_ratio_ms': None,
-        })
+        trials.append(trial_dict)
 
     assert len(trials) == 18, f"Expected 18 trials, got {len(trials)}"
+
+    # 完全打乱试次顺序
     random.shuffle(trials)
     return trials
 
@@ -221,6 +302,11 @@ class LoomingEngine:
       the inactive window retains its last buffer (static baseline).
       win_control is always flipped but in production its waitBlanking is
       disabled so it cannot cause a deadlock.
+
+    === 重构说明 ===
+    - 新增 self.pattern_key 属性：标识当前选定范式。
+    - _render_static_baseline() 统一渲染 2° 黑点基线（所有 9 种范式）。
+    - generate_trial_matrix() 现在接收 pattern_key 参数。
     """
 
     def __init__(self, exp_info: Dict[str, Any]):
@@ -244,7 +330,20 @@ class LoomingEngine:
         self.screen_right: int = int(self.exp_info.get('Right Screen ID', 2))
         self.save_terminal_log: bool = bool(self.exp_info.get('Save Terminal Log (Debug)', False))
 
-        self.trials = generate_trial_matrix()
+        # ==================================================================
+        # 【重构核心】解析 GUI 选中的范式
+        # ------------------------------------------------------------------
+        # pattern_key: 范式键名，用于传递给 generate_trial_matrix()
+        # 所有 9 种范式共享统一的 2° 黑点稳态基线（含 Baseline Wind）。
+        # pattern.md: "Begin Degree: 2°（as baseline on the same time）"
+        # 2° 黑点作为全局视觉基线，用于后续数据归一化。
+        # ==================================================================
+        self.pattern_key: str = self.exp_info.get('Experiment Pattern', PATTERN_CHOICES[0])
+        print(f"[LoomingEngine] 选定范式: {self.pattern_key}")
+        print(f"[LoomingEngine] 基线策略: 灰底 + 2° 黑点 (通用基线，用于归一化)")
+
+        # 使用选定范式生成试次矩阵
+        self.trials = generate_trial_matrix(self.pattern_key)
 
         self.trigger_interface = HardwareTrigger(mode="mock")
         self.logger = GroundTruthLogger()
@@ -424,6 +523,7 @@ class LoomingEngine:
         except Exception:
             pass  # Some backends may not support .activate()
 
+        print(f"[Config] 范式: {self.pattern_key}")
         print(f"[Config] Will run {self.total_sessions} session(s) "
               f"starting from Session {self.start_session_num}.")
 
@@ -431,6 +531,10 @@ class LoomingEngine:
         # Wait-for-Start: animal adaptation / manual launch gate
         # Fires ONCE before all sessions — auto-cycling handles the rest.
         # Control panel is flipped every iteration to prevent ghosting.
+        #
+        # 【重构】此阶段已根据范式类型渲染稳态基线：
+        #   - baseline_wind → 纯灰屏幕
+        #   - 其他范式     → 灰底 + 2° 黑点（Anti-Startle）
         # ==============================================================
         print("\n[Ready] Animal adaptation phase. "
               "Press [SPACE] to start, or [ESCAPE] to abort...")
@@ -462,14 +566,15 @@ class LoomingEngine:
             for session_idx in range(self.total_sessions):
                 current_session_num = self.start_session_num + session_idx
 
-                # Fresh trial matrix and clean logger for each session
-                self.trials = generate_trial_matrix()
+                # 【重构】使用选定的单一范式重新生成试次矩阵
+                self.trials = generate_trial_matrix(self.pattern_key)
                 self.logger.events = []
 
                 print(f"\n{'='*50}")
                 print(f"  Session {current_session_num} "
                       f"({session_idx + 1}/{self.total_sessions}) — "
-                      f"{len(self.trials)} trials")
+                      f"{len(self.trials)} trials | "
+                      f"范式: {self.pattern_key}")
                 print(f"{'='*50}")
 
                 # ---- Inner Trial Loop ----
@@ -509,14 +614,21 @@ class LoomingEngine:
     # ------------------------------------------------------------------
     def _render_static_baseline(self, extra_ctrl_stims: list = None):
         """
-        Render the Blank ITI resting state on all active windows:
-        a completely clean mid-gray background with NO visual stimuli.
+        【重构】渲染通用稳态基线 — 灰底 + 2° 黑点。
 
-        This guarantees that the physical screens (win_left, win_right)
-        show an absolutely clean gray surface during rest periods
-        (Wait-for-Start, ITI, ISI, post-experiment).  The looming
-        stimulus will therefore "pop-in" at initial_angle_deg (2°)
-        on the very first frame of a looming trial.
+        所有 9 种范式（含 Baseline Wind）共享同一基线状态：
+        灰色背景 + 屏幕中央 2° 静态黑点。
+
+        设计依据 (pattern.md):
+          "Begin Degree: 2°（as baseline on the same time）"
+        2° 黑点同时满足两个核心需求：
+          1. 归一化基线：为后续行为数据分析提供统一的视觉参考。
+          2. Anti-Startle：消除视觉刺激突然出现导致的惊跳反射，
+             确保 Looming 从 2° 无缝膨胀（对 Baseline Wind 则
+             保持 2° 不变，仅触发风刺激）。
+
+        控制面板 (win_control) 上同时在左右镜像位置绘制对应的 2° 小圆，
+        为实验者提供实时视觉反馈。
 
         Parameters
         ----------
@@ -525,7 +637,14 @@ class LoomingEngine:
             the single flip (e.g. ISI countdown text).  This avoids a
             double-flip flicker.
         """
-        # ---- Control panel: labels only (no circles) ----
+        # 重置控制面板镜像刺激的半径为初始 2° 基线值
+        # （Looming 试次结束后半径可能被放大到 180°）
+        self.stim_ctrl_left.radius = self.initial_angle_deg / 2.0
+        self.stim_ctrl_right.radius = self.initial_angle_deg / 2.0
+
+        # 控制面板：绘制两个 2° 小圆 + 标签
+        self.stim_ctrl_left.draw()
+        self.stim_ctrl_right.draw()
         self.label_left.draw()
         self.label_right.draw()
         if extra_ctrl_stims:
@@ -533,9 +652,16 @@ class LoomingEngine:
                 stim.draw()
         self.win_control.flip()
 
-        # ---- Physical windows: blank flip (production only) ----
+        # 物理屏幕：绘制中央 2° 黑点 (production only)
         if not self.debug_mode:
+            if self.stim_left is not None:
+                self.stim_left.radius = self.initial_angle_deg / 2.0
+                self.stim_left.draw()
             self.win_left.flip()
+
+            if self.stim_right is not None:
+                self.stim_right.radius = self.initial_angle_deg / 2.0
+                self.stim_right.draw()
             self.win_right.flip()
 
     # ------------------------------------------------------------------
@@ -555,10 +681,9 @@ class LoomingEngine:
     # ------------------------------------------------------------------
     def _wait_iti(self, duration: float):
         """
-        Maintain the static resting state (gray background + stationary
-        initial black disc) during the Inter-Trial Interval while
-        remaining responsive to 'escape'.
+        ITI 期间渲染通用稳态基线（灰底 + 2° 黑点）。
 
+        所有范式均使用统一的 2° 黑点基线。
         Uses _render_static_baseline() to keep all active windows alive
         and prevent OS ghosting.  This is safe because ITI is not
         timing-critical.
@@ -658,6 +783,7 @@ class LoomingEngine:
             "trial_start", t_start,
             trial_index=trial_idx,
             target_ttc_ms=_gt_target_ttc_ms,
+            pattern=self.pattern_key,  # 【新增】记录当前范式
             **{k: v for k, v in trial.items()
                if k != 'target_ttc_ms'}  # avoid duplicate key
         )
@@ -681,6 +807,10 @@ class LoomingEngine:
         #
         # The loop runs until elapsed >= t_collision + 1.0 s so that
         # post-collision triggers (e.g. +200 ms) have time to fire.
+        #
+        # 【重构说明】Looming 起始时，黑点已经以 2° 大小停留在屏幕上
+        # （由 _render_static_baseline 持续渲染）。Looming 开始后，
+        # 引擎从 initial_angle_deg=2° 开始逐帧膨胀，实现无缝衔接。
         # ============================================================
         if trial['type'] in ['baseline_visual', 'looming_wind']:
             lv_ratio_sec = trial['lv_ratio_ms'] / 1000.0
@@ -712,6 +842,21 @@ class LoomingEngine:
             #      authoritative VSync timestamp.
             #   3. (Debug only) Use win_control flip time as timestamp.
             # ===========================================================
+
+            # 【修正】确定非活动侧刺激对象，用于 Looming 期间维持 2° 基线
+            if side_label == 'left':
+                _inactive_ctrl = self.stim_ctrl_right
+                _inactive_phys_win = self.win_right if not self.debug_mode else None
+                _inactive_phys_stim = self.stim_right if not self.debug_mode else None
+            else:
+                _inactive_ctrl = self.stim_ctrl_left
+                _inactive_phys_win = self.win_left if not self.debug_mode else None
+                _inactive_phys_stim = self.stim_left if not self.debug_mode else None
+
+            # 非活动物理窗口设为非阻塞，避免双重 VSync 卡顿
+            if _inactive_phys_win is not None:
+                _inactive_phys_win.waitBlanking = False
+
             looming_t0 = self.clock.getTime()
             first_frame_logged = False
             collision_logged = False
@@ -773,7 +918,11 @@ class LoomingEngine:
 
                 # ---- Control panel mirror (always) ----
                 active_ctrl_stim.radius = theta_deg / 2.0
-                active_ctrl_stim.draw()  # Only draw the active stim to avoid stale-radius occlusion
+                active_ctrl_stim.draw()
+                # 【修正】同时绘制非活动侧 2° 基线黑点，防止另一侧基线消失
+                # [Fix] Draw 2° baseline dark dot on inactive screen
+                _inactive_ctrl.radius = self.initial_angle_deg / 2.0
+                _inactive_ctrl.draw()
                 self.label_left.draw()
                 self.label_right.draw()
                 ctrl_flip = self.win_control.flip()
@@ -783,6 +932,11 @@ class LoomingEngine:
                     active_phys_stim.radius = theta_deg / 2.0
                     active_phys_stim.draw()
                     flip_time = active_phys_win.flip()
+                    # 【修正】刷新非活动侧物理屏幕 2° 基线（非阻塞 flip）
+                    if _inactive_phys_stim is not None and _inactive_phys_win is not None:
+                        _inactive_phys_stim.radius = self.initial_angle_deg / 2.0
+                        _inactive_phys_stim.draw()
+                        _inactive_phys_win.flip()
                 else:
                     flip_time = ctrl_flip
 
@@ -797,6 +951,10 @@ class LoomingEngine:
                 if self.kb.getKeys(['escape']):
                     core.quit()
 
+            # 恢复非活动物理窗口的 VSync 阻塞设置
+            if _inactive_phys_win is not None:
+                _inactive_phys_win.waitBlanking = True
+
             # Debug-only: IFI diagnostic summary for this trial
             if self.debug_mode and len(frame_timestamps) > 1:
                 import numpy as np
@@ -809,9 +967,9 @@ class LoomingEngine:
                       f"max={ifis.max():.2f}ms")
 
         # ============================================================
-        # BASELINE WIND  (pure air-pump control — NO visual change)
-        # The screen remains completely blank (gray bg, no disc) while
-        # only the hardware trigger fires after a random delay.
+        # BASELINE WIND  (pure air-pump control — 视觉保持 2° 基线)
+        # 屏幕持续显示 2° 黑点（通用基线），不做任何视觉变化。
+        # 仅在随机延迟后触发风刺激。2° 黑点确保归一化一致性。
         # Control panel is flipped every frame to stay alive.
         # Physical window (production) is also flipped to stay alive.
         # ============================================================
@@ -853,13 +1011,20 @@ class LoomingEngine:
                     trigger_sent = True
                     _wind_fired_time = current_time
 
-                # Control panel (blank baseline — no circles)
+                # 【修正】Baseline Wind 试次内也渲染 2° 黑点基线
+                # 保持与所有其他范式一致的视觉基线，用于归一化
+                self.stim_ctrl_left.radius = self.initial_angle_deg / 2.0
+                self.stim_ctrl_right.radius = self.initial_angle_deg / 2.0
+                self.stim_ctrl_left.draw()
+                self.stim_ctrl_right.draw()
                 self.label_left.draw()
                 self.label_right.draw()
                 self.win_control.flip()
 
-                # Physical window (production only — blank baseline)
+                # Physical window (production only — 2° 黑点基线)
                 if not self.debug_mode and active_phys_win is not None:
+                    active_phys_stim.radius = self.initial_angle_deg / 2.0
+                    active_phys_stim.draw()
                     active_phys_win.flip()
 
                 if self.kb.getKeys(['escape']):
@@ -867,6 +1032,7 @@ class LoomingEngine:
 
         # ============================================================
         # POST-TRIAL CLEANUP: force all windows to static baseline.
+        # 所有范式统一恢复 2° 黑点基线
         # ============================================================
         self._render_static_baseline()
 
@@ -891,6 +1057,11 @@ def launch_experiment_gui() -> Optional[Dict[str, Any]]:
       - 'Right Screen ID' (default 2): OS display index for right stimulus.
       - Debug Mode: opens two small side-by-side windows on Screen 0.
 
+    === 重构说明 ===
+    新增 Experiment Pattern 下拉选择框，包含 9 种实验范式：
+    实验者在 GUI 中为当前被试选定一种范式后，整个 Session 仅运行该范式的 18 个试次。
+    这实现了"单范式锁定"机制 (Single-Pattern per Subject)。
+
     Returns a dict with keys consumed by LoomingEngine.__init__().
     """
     dlg = gui.Dlg(title="BioMoR Looming Paradigms")
@@ -907,16 +1078,33 @@ def launch_experiment_gui() -> Optional[Dict[str, Any]]:
                  tip='Enter the starting session number')
     dlg.addField('Total Sessions',
                  label='Total Sessions to run:',
-                 initial=1,
-                 tip='Number of sessions to run consecutively')
+                 initial=2,
+                 tip='Number of sessions to run consecutively (pattern.md: 2 sessions per cricket)')
+
+    # ==================================================================
+    # 【重构核心】Experiment Pattern 下拉选择框
+    # ------------------------------------------------------------------
+    # 使用 choices= 参数创建下拉菜单（PsychoPy Dlg 原生支持）。
+    # 下拉列表包含 pattern.md 中定义的全部 9 种范式：
+    #   1. Baseline Visual (仅视觉，无风)
+    #   2. Baseline Wind (仅风，随机延迟)
+    #   3-8. Looming + Wind (6 种负 TTC / 对应角度)
+    #   9. Looming + Wind (TTC +200ms)
+    # 默认选中第一项 (Baseline Visual)，实验者可从下拉菜单中选择。
+    # ==================================================================
+    dlg.addField('Experiment Pattern',
+                 label='✱Experiment Pattern:',
+                 choices=PATTERN_CHOICES,
+                 tip='选择当前被试的实验范式。整个 Session 将仅运行所选范式的 18 个试次。')
+
     dlg.addField('ITI Range (sec)',
                  label='ITI Range (sec):',
                  initial='60-90',
                  tip='Enter the ITI range (e.g. 60-90)')
     dlg.addField('ISI Range (sec)',
                  label='ISI Range (sec):',
-                 initial='720-900',
-                 tip='Enter the ISI range (e.g. 300-600)')
+                 initial='300-600',
+                 tip='Enter the ISI range in seconds (pattern.md: 5~10 min = 300-600)')
     dlg.addField('Left Screen ID',
                  label='Left Screen ID:',
                  initial='1',
