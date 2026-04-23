@@ -3,22 +3,15 @@ stimulus_controller.py
 
 BioMoR — Cricket VR Closed-Loop Stimulus Controller (PsychoPy)
 
-Architecture (Photodiode T₀)
-=============================
+Architecture
+============
   SerialDaemon (daemon thread)
     200 Hz readline → core.getTime() stamp
     → Queue⟨T_psy, T_ard, dx, dy, dz, stim_state⟩
 
   Main Thread (PsychoPy)
-    ITI phase:     compute delay_ms, send <DIR,DELAY_MS> to pre-arm Arduino.
-    Frame 0:       draw sync_patch (white flash) → photodiode → Arduino ISR → T₀
-    Frame 1+:      normal looming render, sync_patch NOT drawn.
-    Every frame:   drain queue → write ALL tuples to CSV → render → flip
-
-  Trigger flow:
-    1. Python sends <L,5729> during ITI  → Arduino arms valve + delay.
-    2. Looming Frame 0 flashes sync_patch → photodiode fires ISR → T₀ recorded.
-    3. Arduino internally fires valve at T₀ + delay_ms.
+    Every frame:  drain queue → write ALL tuples to CSV → render → flip
+    Trigger:      serial.write(b'L') or serial.write(b'R')
 
 Data Integrity
 --------------
@@ -156,7 +149,7 @@ def generate_trial_matrix(pattern_key: str) -> List[Dict[str, Any]]:
 class SerialDaemon:
     """
     Daemon thread: 200 Hz readline → core.getTime() → Queue.
-    Pre-arm:  write(b'<L,5729>') — packet command for T₀ architecture.
+    Trigger: write(b'L') or write(b'R') — single byte, zero parse.
     """
 
     def __init__(self, port: str, baudrate: int = 115200, timeout: float = 0.05):
@@ -207,15 +200,12 @@ class SerialDaemon:
             except Exception:
                 continue
 
-    def send_arm_command(self, direction: str, delay_ms: int):
-        """
-        Pre-arm Arduino for T₀-anchored valve firing.
-        Sends packet: <L,5729> or <R,300>
-        """
-        dir_char = 'R' if direction == 'right' else 'L'
-        cmd = f"<{dir_char},{delay_ms}>"
-        self.write(cmd.encode('ascii'))
-        print(f"[SerialDaemon] Armed: {cmd}")
+    def send_trigger(self, direction: str):
+        """Send single byte: b'L' for left, b'R' for right."""
+        if direction == 'right':
+            self.write(b'R')
+        else:
+            self.write(b'L')
 
     def write(self, data: bytes):
         if self._serial and self._serial.is_open:
@@ -249,9 +239,8 @@ class MockSerialDaemon:
     def start(self):
         pass
 
-    def send_arm_command(self, direction: str, delay_ms: int):
-        dir_char = 'R' if direction == 'right' else 'L'
-        print(f"[MockArm] <{dir_char},{delay_ms}> at t={core.getTime():.4f}")
+    def send_trigger(self, direction: str):
+        print(f"[MockTrigger] '{direction.upper()[0]}' at t={core.getTime():.4f}")
 
     def write(self, data: bytes):
         pass
@@ -428,9 +417,6 @@ class LoomingEngine:
     Key invariant:  _drain_and_log() is called EVERY frame in EVERY loop
     (ITI, ISI, looming, baseline_wind, wait-for-start).  This ensures
     zero motion data loss from the 200 Hz Arduino stream.
-
-    Photodiode sync: self.sync_patch — white square at screen corner,
-    drawn ONLY on Frame 0 of each looming trial to flash the photodiode.
     """
 
     def __init__(self, exp_info: Dict[str, Any]):
@@ -480,12 +466,6 @@ class LoomingEngine:
         self.stim_left: Optional[visual.Circle] = None
         self.stim_right: Optional[visual.Circle] = None
 
-        # Photodiode sync patches — created per-window in run_experiment()
-        self.sync_patch_ctrl_left: Optional[visual.Rect] = None
-        self.sync_patch_ctrl_right: Optional[visual.Rect] = None
-        self.sync_patch_left: Optional[visual.Rect] = None
-        self.sync_patch_right: Optional[visual.Rect] = None
-
     # ------------------------------------------------------------------
     # Drain + log helper — called EVERY frame
     # ------------------------------------------------------------------
@@ -499,29 +479,6 @@ class LoomingEngine:
         data = self.serial_daemon.drain_queue()
         if data and self.logger and self.logger.is_open():
             self.logger.log_motion_batch(data)
-
-    # ------------------------------------------------------------------
-    # Sync patch factory
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _make_sync_patch(win: visual.Window, side: str = 'left') -> visual.Rect:
-        """
-        Create a high-contrast white square for photodiode detection.
-        X-axis mirrored for V-array spatial symmetry:
-          left  screen → bottom-LEFT  corner  (x = -offset)
-          right screen → bottom-RIGHT corner  (x = +offset)
-        Size: 2° × 2° (small but detectable).
-        """
-        x_offset = 25
-        x_pos = -x_offset if side == 'left' else x_offset
-        return visual.Rect(
-            win,
-            width=2.0, height=2.0,
-            fillColor=[1, 1, 1],     # pure white
-            lineColor=[1, 1, 1],
-            pos=(x_pos, -15),        # mirrored corner (deg units)
-            units='deg',
-        )
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -621,25 +578,6 @@ class LoomingEngine:
                 radius=self.initial_angle_deg / 2.0, pos=(0, 0)
             )
 
-        # ---- Photodiode sync patches ----
-        # Control panel: dual mirror indicators (L/R) for V-array symmetry.
-        # Positioned within the smaller 1000×500 control window viewport.
-        self.sync_patch_ctrl_left = visual.Rect(
-            self.win_control, width=2, height=2,
-            fillColor=[1, 1, 1], lineColor=[1, 1, 1],
-            pos=(-10, -10),    # upper-left area — mirrors left physical screen
-            units='deg',
-        )
-        self.sync_patch_ctrl_right = visual.Rect(
-            self.win_control, width=2, height=2,
-            fillColor=[1, 1, 1], lineColor=[1, 1, 1],
-            pos=(10, -10),     # upper-right area — mirrors right physical screen
-            units='deg',
-        )
-        if not self.debug_mode:
-            self.sync_patch_left = self._make_sync_patch(self.win_left, side='left')
-            self.sync_patch_right = self._make_sync_patch(self.win_right, side='right')
-
         self.kb = keyboard.Keyboard()
         self._render_static_baseline()
 
@@ -702,10 +640,7 @@ class LoomingEngine:
                     if trial_idx > 0:
                         iti_dur = random.uniform(self.iti_min, self.iti_max)
                         print(f"\n--- ITI {trial_idx+1}: {iti_dur:.1f}s ---")
-                        self._wait_iti(iti_dur, trial)
-                    else:
-                        # First trial — still need to pre-arm before looming
-                        self._pre_arm_arduino(trial)
+                        self._wait_iti(iti_dur)
 
                     print(f"Trial {trial_idx+1}/{len(self.trials)} | "
                           f"{trial['type']} | "
@@ -775,67 +710,8 @@ class LoomingEngine:
             self.win_right.close()
 
     # ------------------------------------------------------------------
-    # Pre-arm Arduino during ITI
-    # ------------------------------------------------------------------
-    def _compute_arm_delay_ms(self, trial: Dict[str, Any]) -> Optional[int]:
-        """
-        Compute the delay (ms from T₀) at which Arduino should fire the valve.
-        Returns None if this trial should NOT fire any valve.
-
-        For looming_wind: delay = t_collision_ms + target_ttc_ms
-            (target_ttc_ms is negative for pre-collision, positive for post)
-        For baseline_wind: handled separately (random delay, no T₀ anchor)
-        For baseline_visual: no wind at all
-        """
-        if trial['type'] == 'baseline_visual':
-            return None
-        if trial['type'] == 'baseline_wind':
-            return None  # baseline_wind uses its own random-delay logic
-
-        # looming_wind
-        _ttc = trial.get('target_ttc_ms')
-        lv_ms = trial.get('lv_ratio_ms')
-        if _ttc is None or lv_ms is None:
-            return None
-
-        lv_sec = lv_ms / 1000.0
-        t_collision_sec = lv_sec / math.tan(
-            math.radians(self.initial_angle_deg) / 2)
-        t_collision_ms = int(round(t_collision_sec * 1000))
-        delay_ms = t_collision_ms + _ttc   # ttc is negative before collision
-        return max(0, delay_ms)
-
-    def _pre_arm_arduino(self, trial: Dict[str, Any]):
-        """
-        Send pre-arm command to Arduino for the NEXT trial.
-        Called during ITI so Arduino is ready before looming starts.
-        """
-        delay_ms = self._compute_arm_delay_ms(trial)
-        if delay_ms is None:
-            return  # No valve for this trial type
-
-        wind_dir = trial.get('wind_dir', 'left')
-        self.serial_daemon.send_arm_command(wind_dir, delay_ms)
-        self.logger.log_event(
-            "arduino_armed", self.clock.getTime(),
-            direction=wind_dir,
-            delay_ms=delay_ms,
-            trial_type=trial['type'],
-            target_ttc_ms=trial.get('target_ttc_ms'),
-        )
-
-    # ------------------------------------------------------------------
-    def _wait_iti(self, duration: float, next_trial: Dict[str, Any] = None):
-        """
-        ITI: render baseline, drain queue, and pre-arm Arduino for next trial.
-        Pre-arm is sent at the START of ITI so Arduino has plenty of time.
-        """
+    def _wait_iti(self, duration: float):
         self.logger.log_event("iti_start", self.clock.getTime(), duration=duration)
-
-        # Pre-arm for the upcoming trial
-        if next_trial is not None:
-            self._pre_arm_arduino(next_trial)
-
         t0 = self.clock.getTime()
         while (self.clock.getTime() - t0) < duration:
             self._render_static_baseline()
@@ -878,20 +754,6 @@ class LoomingEngine:
                     self.win_left, self.stim_left, 'left')
 
     # ------------------------------------------------------------------
-    def _resolve_sync_patch(self, side: str):
-        """
-        Return (physical_patch, ctrl_mirror_patch) for the active side.
-        In debug mode physical_patch is None (no physical screens).
-        """
-        ctrl_mirror = (self.sync_patch_ctrl_right if side == 'right'
-                       else self.sync_patch_ctrl_left)
-        if self.debug_mode:
-            return None, ctrl_mirror
-        if side == 'right':
-            return self.sync_patch_right, ctrl_mirror
-        return self.sync_patch_left, ctrl_mirror
-
-    # ------------------------------------------------------------------
     def _run_single_trial(self, trial_idx: int, trial: Dict[str, Any]):
         t_start = self.clock.getTime()
 
@@ -909,6 +771,7 @@ class LoomingEngine:
             **{k: v for k, v in trial.items() if k != 'target_ttc_ms'}
         )
 
+        trigger_sent = False
         active_ctrl, active_win, active_stim, side = \
             self._resolve_active_window(trial)
         print(f"  [Route] screen={side}")
@@ -926,6 +789,11 @@ class LoomingEngine:
             print(f"  [Phys] θ₀=2° l/v={trial['lv_ratio_ms']}ms → "
                   f"t_col={t_collision*1000:.1f}ms")
 
+            t_trigger = None
+            if trial['type'] == 'looming_wind' and _ttc is not None:
+                t_trigger = t_collision + (_ttc / 1000.0)
+                print(f"  [TTC] target={_ttc}ms → t_trig={t_trigger*1000:.1f}ms")
+
             # Inactive side
             if side == 'left':
                 _inact_ctrl = self.stim_ctrl_right
@@ -939,13 +807,9 @@ class LoomingEngine:
             if _inact_win is not None:
                 _inact_win.waitBlanking = False
 
-            # Sync patches for photodiode trigger (physical + control mirror)
-            sync_patch, sync_patch_ctrl_mirror = self._resolve_sync_patch(side)
-
             t0_loom = self.clock.getTime()
             first_logged = False
             coll_logged  = False
-            frame_count  = 0
             frame_ts: List[float] = [] if self.debug_mode else None
 
             while True:
@@ -970,6 +834,21 @@ class LoomingEngine:
                                               t_collision=t_collision)
                         coll_logged = True
 
+                # Trigger
+                if not trigger_sent and t_trigger is not None \
+                        and elapsed >= t_trigger:
+                    self.serial_daemon.send_trigger(wind_dir)
+                    self.logger.log_event(
+                        "wind_triggered", now,
+                        target_ttc_ms=_ttc,
+                        actual_ttc_sec=(t_collision - elapsed),
+                        elapsed=elapsed,
+                        t_trigger=t_trigger,
+                        t_collision=t_collision,
+                        wind_direction=wind_dir
+                    )
+                    trigger_sent = True
+
                 # ---- Control panel ----
                 active_ctrl.radius = theta / 2.0
                 active_ctrl.draw()
@@ -977,20 +856,12 @@ class LoomingEngine:
                 _inact_ctrl.draw()
                 self.label_left.draw()
                 self.label_right.draw()
-
-                # Frame 0: draw side-specific sync mirror on control panel
-                if frame_count == 0 and sync_patch_ctrl_mirror is not None:
-                    sync_patch_ctrl_mirror.draw()
-
                 ctrl_flip = self.win_control.flip()
 
                 # ---- Physical window ----
                 if not self.debug_mode and active_win is not None:
                     active_stim.radius = theta / 2.0
                     active_stim.draw()
-                    # Frame 0: flash sync patch on the active physical window
-                    if frame_count == 0 and sync_patch is not None:
-                        sync_patch.draw()
                     flip_t = active_win.flip()
                     if _inact_stim is not None and _inact_win is not None:
                         _inact_stim.radius = self.initial_angle_deg / 2.0
@@ -1004,11 +875,8 @@ class LoomingEngine:
                 if not first_logged:
                     self.logger.log_event("first_frame", flip_t,
                                           initial_angle=theta,
-                                          active_screen=side,
-                                          sync_patch_drawn=True)
+                                          active_screen=side)
                     first_logged = True
-
-                frame_count += 1
 
                 # ★ Drain & log every frame — no data loss
                 self._drain_and_log()
@@ -1038,7 +906,6 @@ class LoomingEngine:
 
             t0 = self.clock.getTime()
             fire_time = None
-            trigger_sent = False
 
             while True:
                 now = self.clock.getTime()
@@ -1048,10 +915,7 @@ class LoomingEngine:
                     break
 
                 if elapsed >= delay and not trigger_sent:
-                    # baseline_wind: direct single-byte trigger (no T₀ architecture)
-                    # Send as arm + immediate synthetic T₀
-                    dir_char = 'R' if wind_dir == 'right' else 'L'
-                    self.serial_daemon.send_arm_command(wind_dir, 0)
+                    self.serial_daemon.send_trigger(wind_dir)
                     self.logger.log_event("wind_triggered", now,
                                           random_delay_sec=delay,
                                           wind_direction=wind_dir)
