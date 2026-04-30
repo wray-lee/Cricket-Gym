@@ -50,6 +50,7 @@ from psychopy.hardware import keyboard
 try:
     import serial
     import serial.tools.list_ports
+
     HAS_SERIAL = True
 except ImportError:
     HAS_SERIAL = False
@@ -60,59 +61,59 @@ except ImportError:
 # ==============================================================================
 
 EXPERIMENT_PATTERNS = {
-    'Baseline Visual (仅视觉，无风)': {
-        'type': 'baseline_visual',
-        'target_ttc_ms': None,
-        'lv_ratio_ms': 100,
-        'description': '纯视觉 Looming，不触发任何风刺激',
+    "Baseline Visual (仅视觉，无风)": {
+        "type": "baseline_visual",
+        "target_ttc_ms": None,
+        "lv_ratio_ms": 100,
+        "description": "纯视觉 Looming，不触发任何风刺激",
     },
-    'Baseline Wind (仅风，随机延迟)': {
-        'type': 'baseline_wind',
-        'target_ttc_ms': None,
-        'lv_ratio_ms': None,
-        'description': '纯风刺激，无视觉 Looming，屏幕保持 2° 黑点基线',
+    "Baseline Wind (仅风，随机延迟)": {
+        "type": "baseline_wind",
+        "target_ttc_ms": None,
+        "lv_ratio_ms": None,
+        "description": "纯风刺激，无视觉 Looming，屏幕保持 2° 黑点基线",
     },
-    'Looming + Wind (TTC -373ms / 30°)': {
-        'type': 'looming_wind',
-        'target_ttc_ms': -373,
-        'lv_ratio_ms': 100,
-        'description': 'Looming + 风，风在碰撞前 373ms 触发 (θ≈30°)',
+    "Looming + Wind (TTC -373ms / 30°)": {
+        "type": "looming_wind",
+        "target_ttc_ms": -373,
+        "lv_ratio_ms": 100,
+        "description": "Looming + 风，风在碰撞前 373ms 触发 (θ≈30°)",
     },
-    'Looming + Wind (TTC -308ms / 36°)': {
-        'type': 'looming_wind',
-        'target_ttc_ms': -308,
-        'lv_ratio_ms': 100,
-        'description': 'Looming + 风，风在碰撞前 308ms 触发 (θ≈36°)',
+    "Looming + Wind (TTC -308ms / 36°)": {
+        "type": "looming_wind",
+        "target_ttc_ms": -308,
+        "lv_ratio_ms": 100,
+        "description": "Looming + 风，风在碰撞前 308ms 触发 (θ≈36°)",
     },
-    'Looming + Wind (TTC -261ms / 42°)': {
-        'type': 'looming_wind',
-        'target_ttc_ms': -261,
-        'lv_ratio_ms': 100,
-        'description': 'Looming + 风，风在碰撞前 261ms 触发 (θ≈42°)',
+    "Looming + Wind (TTC -261ms / 42°)": {
+        "type": "looming_wind",
+        "target_ttc_ms": -261,
+        "lv_ratio_ms": 100,
+        "description": "Looming + 风，风在碰撞前 261ms 触发 (θ≈42°)",
     },
-    'Looming + Wind (TTC -225ms / 48°)': {
-        'type': 'looming_wind',
-        'target_ttc_ms': -225,
-        'lv_ratio_ms': 100,
-        'description': 'Looming + 风，风在碰撞前 225ms 触发 (θ≈48°)',
+    "Looming + Wind (TTC -225ms / 48°)": {
+        "type": "looming_wind",
+        "target_ttc_ms": -225,
+        "lv_ratio_ms": 100,
+        "description": "Looming + 风，风在碰撞前 225ms 触发 (θ≈48°)",
     },
-    'Looming + Wind (TTC -119ms / 80°)': {
-        'type': 'looming_wind',
-        'target_ttc_ms': -119,
-        'lv_ratio_ms': 100,
-        'description': 'Looming + 风，风在碰撞前 119ms 触发 (θ≈80°)',
+    "Looming + Wind (TTC -119ms / 80°)": {
+        "type": "looming_wind",
+        "target_ttc_ms": -119,
+        "lv_ratio_ms": 100,
+        "description": "Looming + 风，风在碰撞前 119ms 触发 (θ≈80°)",
     },
-    'Looming + Wind (TTC 0ms / 180°)': {
-        'type': 'looming_wind',
-        'target_ttc_ms': 0,
-        'lv_ratio_ms': 100,
-        'description': 'Looming + 风，风在碰撞瞬间触发 (θ=180°)',
+    "Looming + Wind (TTC 0ms / 180°)": {
+        "type": "looming_wind",
+        "target_ttc_ms": 0,
+        "lv_ratio_ms": 100,
+        "description": "Looming + 风，风在碰撞瞬间触发 (θ=180°)",
     },
-    'Looming + Wind (TTC +200ms)': {
-        'type': 'looming_wind',
-        'target_ttc_ms': 200,
-        'lv_ratio_ms': 100,
-        'description': 'Looming + 风，风在碰撞后 200ms 触发',
+    "Looming + Wind (TTC +200ms)": {
+        "type": "looming_wind",
+        "target_ttc_ms": 200,
+        "lv_ratio_ms": 100,
+        "description": "Looming + 风，风在碰撞后 200ms 触发",
     },
 }
 
@@ -123,6 +124,7 @@ PATTERN_CHOICES = list(EXPERIMENT_PATTERNS.keys())
 # Trial Matrix Generator
 # ==============================================================================
 
+
 def generate_trial_matrix(pattern_key: str) -> List[Dict[str, Any]]:
     """18 trials (9L + 9R), single paradigm, shuffled."""
     if pattern_key not in EXPERIMENT_PATTERNS:
@@ -131,17 +133,17 @@ def generate_trial_matrix(pattern_key: str) -> List[Dict[str, Any]]:
     p = EXPERIMENT_PATTERNS[pattern_key]
     trials: List[Dict[str, Any]] = []
 
-    for direction in (['left'] * 9 + ['right'] * 9):
+    for direction in ["left"] * 9 + ["right"] * 9:
         d: Dict[str, Any] = {
-            'type': p['type'],
-            'target_ttc_ms': p['target_ttc_ms'],
-            'lv_ratio_ms': p['lv_ratio_ms'],
+            "type": p["type"],
+            "target_ttc_ms": p["target_ttc_ms"],
+            "lv_ratio_ms": p["lv_ratio_ms"],
         }
-        if p['type'] == 'baseline_visual':
-            d['wind_dir'] = 'none'
-            d['screen_side'] = direction
+        if p["type"] == "baseline_visual":
+            d["wind_dir"] = "none"
+            d["screen_side"] = direction
         else:
-            d['wind_dir'] = direction
+            d["wind_dir"] = direction
         trials.append(d)
 
     assert len(trials) == 18
@@ -152,6 +154,7 @@ def generate_trial_matrix(pattern_key: str) -> List[Dict[str, Any]]:
 # ==============================================================================
 # Serial Daemon Thread
 # ==============================================================================
+
 
 class SerialDaemon:
     """
@@ -185,17 +188,17 @@ class SerialDaemon:
                 if not raw:
                     continue
                 t_psy = core.getTime()
-                line = raw.decode('ascii', errors='ignore').strip()
+                line = raw.decode("ascii", errors="ignore").strip()
                 if not line:
                     continue
-                parts = line.split(',')
+                parts = line.split(",")
                 if len(parts) != 5:
                     continue
                 t_ard = int(parts[0])
-                dx    = int(parts[1])
-                dy    = int(parts[2])
-                dz    = int(parts[3])
-                stim  = int(parts[4])
+                dx = int(parts[1])
+                dy = int(parts[2])
+                dz = int(parts[3])
+                stim = int(parts[4])
                 try:
                     self.data_queue.put_nowait((t_psy, t_ard, dx, dy, dz, stim))
                 except queue.Full:
@@ -212,9 +215,9 @@ class SerialDaemon:
         Pre-arm Arduino for T₀-anchored valve firing.
         Sends packet: <L,5729> or <R,300>
         """
-        dir_char = 'R' if direction == 'right' else 'L'
+        dir_char = "R" if direction == "right" else "L"
         cmd = f"<{dir_char},{delay_ms}>"
-        self.write(cmd.encode('ascii'))
+        self.write(cmd.encode("ascii"))
         print(f"[SerialDaemon] Armed: {cmd}")
 
     def write(self, data: bytes):
@@ -250,7 +253,7 @@ class MockSerialDaemon:
         pass
 
     def send_arm_command(self, direction: str, delay_ms: int):
-        dir_char = 'R' if direction == 'right' else 'L'
+        dir_char = "R" if direction == "right" else "L"
         print(f"[MockArm] <{dir_char},{delay_ms}> at t={core.getTime():.4f}")
 
     def write(self, data: bytes):
@@ -266,6 +269,7 @@ class MockSerialDaemon:
 # ==============================================================================
 # Ground Truth Logger — Streaming CSV + .trial_cache.txt persistence
 # ==============================================================================
+
 
 class GroundTruthLogger:
     """
@@ -283,8 +287,17 @@ class GroundTruthLogger:
     """
 
     COLUMNS = [
-        'event_name', 'timestamp', 'session_num', 'trial_in_session',
-        'global_trial_id', 't_ard', 'dx', 'dy', 'dz', 'stim_state', 'details'
+        "event_name",
+        "timestamp",
+        "session_num",
+        "trial_in_session",
+        "global_trial_id",
+        "t_ard",
+        "dx",
+        "dy",
+        "dz",
+        "stim_state",
+        "details",
     ]
 
     def __init__(self, output_dir: str):
@@ -298,26 +311,28 @@ class GroundTruthLogger:
         self._csv_file = None
         self._csv_writer = None
 
-        print(f"[GroundTruthLogger] global_trial_id = {self._global_trial_id} "
-              f"(from .trial_cache.txt)")
+        print(
+            f"[GroundTruthLogger] global_trial_id = {self._global_trial_id} "
+            f"(from .trial_cache.txt)"
+        )
 
     # ---- Trial cache persistence ----
 
     def _cache_path(self) -> str:
-        return os.path.join(self._output_dir, '.trial_cache.txt')
+        return os.path.join(self._output_dir, ".trial_cache.txt")
 
     def _load_trial_cache(self) -> int:
         p = self._cache_path()
         if os.path.exists(p):
             try:
-                with open(p, 'r') as f:
+                with open(p, "r") as f:
                     return int(f.read().strip())
             except (ValueError, IOError):
                 pass
         return 0
 
     def _save_trial_cache(self):
-        with open(self._cache_path(), 'w') as f:
+        with open(self._cache_path(), "w") as f:
             f.write(str(self._global_trial_id))
 
     # ---- Session file management ----
@@ -327,7 +342,7 @@ class GroundTruthLogger:
         self.close()
         self._session_num = session_num
         self._trial_in_session = 0
-        self._csv_file = open(filepath, 'w', newline='', encoding='utf-8')
+        self._csv_file = open(filepath, "w", newline="", encoding="utf-8")
         self._csv_writer = csv.writer(self._csv_file)
         self._csv_writer.writerow(self.COLUMNS)
         self._csv_file.flush()
@@ -366,24 +381,44 @@ class GroundTruthLogger:
         """
         if not self._csv_writer or not tuples:
             return
-        for (t_psy, t_ard, dx, dy, dz, stim_state) in tuples:
-            self._csv_writer.writerow([
-                'motion', f'{t_psy:.6f}', self._session_num,
-                self._trial_in_session, self._global_trial_id,
-                t_ard, dx, dy, dz, stim_state, ''
-            ])
+        for t_psy, t_ard, dx, dy, dz, stim_state in tuples:
+            self._csv_writer.writerow(
+                [
+                    "motion",
+                    f"{t_psy:.6f}",
+                    self._session_num,
+                    self._trial_in_session,
+                    self._global_trial_id,
+                    t_ard,
+                    dx,
+                    dy,
+                    dz,
+                    stim_state,
+                    "",
+                ]
+            )
 
     # ---- Sparse event logging ----
 
     def log_event(self, event_name: str, timestamp: float, **kwargs):
         if not self._csv_writer:
             return
-        details = json.dumps(kwargs, ensure_ascii=False) if kwargs else ''
-        self._csv_writer.writerow([
-            event_name, f'{timestamp:.6f}', self._session_num,
-            self._trial_in_session, self._global_trial_id,
-            '', '', '', '', '', details
-        ])
+        details = json.dumps(kwargs, ensure_ascii=False) if kwargs else ""
+        self._csv_writer.writerow(
+            [
+                event_name,
+                f"{timestamp:.6f}",
+                self._session_num,
+                self._trial_in_session,
+                self._global_trial_id,
+                "",
+                "",
+                "",
+                "",
+                "",
+                details,
+            ]
+        )
 
     # ---- Safe low-frequency flush (call at trial boundaries only) ----
 
@@ -398,10 +433,11 @@ class GroundTruthLogger:
 # Console Logger (stdout tee)
 # ==============================================================================
 
+
 class ConsoleLogger:
     def __init__(self, log_path: str):
         self._original_stdout = sys.stdout
-        self._log_file = open(log_path, 'a', encoding='utf-8')
+        self._log_file = open(log_path, "a", encoding="utf-8")
         print(f"[ConsoleLogger] Mirroring → {log_path}")
 
     def write(self, message: str) -> None:
@@ -421,6 +457,7 @@ class ConsoleLogger:
 # Looming Engine
 # ==============================================================================
 
+
 class LoomingEngine:
     """
     VSync-locked visual stimulus engine.
@@ -436,23 +473,29 @@ class LoomingEngine:
     def __init__(self, exp_info: Dict[str, Any]):
         self.exp_info = exp_info
 
-        iti_range = self.exp_info['ITI Range (sec)'].split('-')
+        iti_range = self.exp_info["ITI Range (sec)"].split("-")
         self.iti_min = float(iti_range[0])
         self.iti_max = float(iti_range[1])
 
-        isi_range = self.exp_info['ISI Range (sec)'].split('-')
+        isi_range = self.exp_info["ISI Range (sec)"].split("-")
         self.isi_min = float(isi_range[0])
         self.isi_max = float(isi_range[1])
 
-        self.start_session_num = int(self.exp_info['Session Number'])
-        self.total_sessions = int(self.exp_info.get('Total Sessions', 1))
+        self.start_session_num = int(self.exp_info["Session Number"])
+        self.total_sessions = int(self.exp_info.get("Total Sessions", 1))
 
-        self.debug_mode: bool = bool(self.exp_info.get('Debug Mode (Single Screen)', True))
-        self.screen_left: int = int(self.exp_info.get('Left Screen ID', 1))
-        self.screen_right: int = int(self.exp_info.get('Right Screen ID', 2))
-        self.save_terminal_log: bool = bool(self.exp_info.get('Save Terminal Log (Debug)', False))
+        self.debug_mode: bool = bool(
+            self.exp_info.get("Debug Mode (Single Screen)", True)
+        )
+        self.screen_left: int = int(self.exp_info.get("Left Screen ID", 1))
+        self.screen_right: int = int(self.exp_info.get("Right Screen ID", 2))
+        self.save_terminal_log: bool = bool(
+            self.exp_info.get("Save Terminal Log (Debug)", False)
+        )
 
-        self.pattern_key: str = self.exp_info.get('Experiment Pattern', PATTERN_CHOICES[0])
+        self.pattern_key: str = self.exp_info.get(
+            "Experiment Pattern", PATTERN_CHOICES[0]
+        )
         print(f"[LoomingEngine] Pattern: {self.pattern_key}")
         print(f"[LoomingEngine] Baseline: gray bg + 2° dark dot (Anti-Startle)")
 
@@ -504,7 +547,7 @@ class LoomingEngine:
     # Sync patch factory
     # ------------------------------------------------------------------
     @staticmethod
-    def _make_sync_patch(win: visual.Window, side: str = 'left') -> visual.Rect:
+    def _make_sync_patch(win: visual.Window, side: str = "left") -> visual.Rect:
         """
         Create a high-contrast white square for photodiode detection.
         X-axis mirrored for V-array spatial symmetry:
@@ -513,25 +556,38 @@ class LoomingEngine:
         Size: 2° × 2° (small but detectable).
         """
         x_offset = 25
-        x_pos = -x_offset if side == 'left' else x_offset
+        x_pos = -x_offset if side == "left" else x_offset
         return visual.Rect(
             win,
-            width=2.0, height=2.0,
-            fillColor=[1, 1, 1],     # pure white
+            width=2.0,
+            height=2.0,
+            fillColor=[1, 1, 1],  # pure white
             lineColor=[1, 1, 1],
-            pos=(x_pos, -15),        # mirrored corner (deg units)
-            units='deg',
+            pos=(x_pos, -15),  # mirrored corner (deg units)
+            units="deg",
         )
 
     # ------------------------------------------------------------------
     # Main entry point
     # ------------------------------------------------------------------
     def run_experiment(self, output_dir: str = "."):
+        # ---- 全局安全逃生舱（状态机模式）----
+        # globalKeys 回调只设标志位，不在 Pyglet C 回调栈里抛 SystemExit，
+        # 避免 ctypes 异常吞噬。主线程轮询读取标志后在 Python 层执行 core.quit()。
+        self.emergency_abort = False
+
+        def _flag_abort():
+            self.emergency_abort = True
+
+        event.globalKeys.clear()
+        event.globalKeys.add(key="escape", func=_flag_abort)
+
         # ---- Console logger (debug) ----
         if self.debug_mode and self.save_terminal_log:
             os.makedirs(output_dir, exist_ok=True)
-            log_path = os.path.join(output_dir,
-                                    f"{self.exp_info['Subject ID']}_terminal.txt")
+            log_path = os.path.join(
+                output_dir, f"{self.exp_info['Subject ID']}_terminal.txt"
+            )
             self._console_logger = ConsoleLogger(log_path)
             sys.stdout = self._console_logger
 
@@ -539,9 +595,8 @@ class LoomingEngine:
         self.logger = GroundTruthLogger(output_dir)
 
         # ---- Serial daemon ----
-        serial_port = self.exp_info.get('Serial Port', '')
-        use_mock = (serial_port.lower() in ('mock', '', 'none')
-                    or not HAS_SERIAL)
+        serial_port = self.exp_info.get("Serial Port", "")
+        use_mock = serial_port.lower() in ("mock", "", "none") or not HAS_SERIAL
         if use_mock:
             self.serial_daemon = MockSerialDaemon()
         else:
@@ -549,96 +604,188 @@ class LoomingEngine:
         self.serial_daemon.start()
 
         # ---- Monitor profile ----
-        my_monitor = monitors.Monitor('cricket_monitor')
+        my_monitor = monitors.Monitor("cricket_monitor")
         my_monitor.setWidth(53.0)
         my_monitor.setDistance(30.0)
         my_monitor.setSizePix((1920, 1080))
         my_monitor.saveMon()
 
+        # ---- 硬件拓扑冲突校验 (防呆机制) ----
+        if not self.debug_mode:
+            # 在 Prod 模式下，控制屏(默认为0)、左屏、右屏必须是三个独立的物理监视器
+            assigned_screens = {0, self.screen_left, self.screen_right}
+            if len(assigned_screens) < 3:
+                print("\n" + "!" * 60)
+                print("[硬件配置致命错误] 屏幕 ID 发生冲突！")
+                print(
+                    f"当前配置：控制台=0, 左屏={self.screen_left}, 右屏={self.screen_right}"
+                )
+                print("在 Prod 模式下，必须分配三个完全不同的物理显示器 ID。")
+                print("多个全屏窗口抢占同一显示器会导致显卡底层死锁（白屏卡死）。")
+                print(
+                    "--> 如果您在单屏幕上进行测试，请务必在启动界面勾选 'Debug Mode'！"
+                )
+                print("")
+                print("[Hardware Config Error] Screen ID conflict detected!")
+                print(
+                    f"Config now：Console=0, 左屏={self.screen_left}, 右屏={self.screen_right}"
+                )
+                print(
+                    "You must assign three distinct physical monitor IDs in Production mode."
+                )
+                print(
+                    "Multiple fullscreen windows on the same display will cause GPU-level deadlock (white screen freeze)."
+                )
+                print(
+                    "--> Please check the 'Debug Mode' checkbox on the startup interface!"
+                )
+                print("!" * 60 + "\n")
+                self._shutdown()
+                core.quit()
+
         # ---- Windows ----
         if self.debug_mode:
             print("[LoomingEngine] Debug Mode — control panel on screen 0")
             self.win_control = visual.Window(
-                size=(1000, 500), monitor=my_monitor, screen=0,
-                color=[0, 0, 0], colorSpace='rgb', units='deg',
-                fullscr=False, allowGUI=True,
-                waitBlanking=True, checkTiming=True,
+                size=(1000, 500),
+                monitor=my_monitor,
+                screen=0,
+                color=[0, 0, 0],
+                colorSpace="rgb",
+                units="deg",
+                fullscr=False,
+                allowGUI=True,
+                waitBlanking=False,  # 三屏统一关闭 VSync，杜绝多屏死锁
+                checkTiming=False,
             )
-            self.win_control.recordFrameIntervals = True
+            self.win_control.recordFrameIntervals = False
         else:
-            print(f"[LoomingEngine] Production — L={self.screen_left} R={self.screen_right}")
+            print(
+                f"[LoomingEngine] Production — L={self.screen_left} R={self.screen_right}"
+            )
             self.win_control = visual.Window(
-                size=(1000, 500), monitor=my_monitor, screen=0,
-                color=[0, 0, 0], colorSpace='rgb', units='deg',
-                fullscr=False, allowGUI=True,
-                waitBlanking=False, checkTiming=False,
+                size=(1000, 500),
+                monitor=my_monitor,
+                screen=0,
+                color=[0, 0, 0],
+                colorSpace="rgb",
+                units="deg",
+                fullscr=False,
+                allowGUI=True,
+                waitBlanking=False,
+                checkTiming=False,
             )
             self.win_control.recordFrameIntervals = False
             self.win_left = visual.Window(
-                size=(1920, 1080), monitor=my_monitor, screen=self.screen_left,
-                color=[0, 0, 0], colorSpace='rgb', units='deg',
-                fullscr=True, allowGUI=False,
-                waitBlanking=True, checkTiming=False,
+                size=(1920, 1080),
+                monitor=my_monitor,
+                screen=self.screen_left,
+                color=[0, 0, 0],
+                colorSpace="rgb",
+                units="deg",
+                fullscr=True,
+                allowGUI=False,
+                waitBlanking=True,  # Master VSync 锁相 — 全系统唯一硬件时钟源
+                checkTiming=True,
             )
-            self.win_left.recordFrameIntervals = False
+            self.win_left.recordFrameIntervals = True
             self.win_right = visual.Window(
-                size=(1920, 1080), monitor=my_monitor, screen=self.screen_right,
-                color=[0, 0, 0], colorSpace='rgb', units='deg',
-                fullscr=True, allowGUI=False,
-                waitBlanking=True, checkTiming=False,
+                size=(1920, 1080),
+                monitor=my_monitor,
+                screen=self.screen_right,
+                color=[0, 0, 0],
+                colorSpace="rgb",
+                units="deg",
+                fullscr=True,
+                allowGUI=False,
+                waitBlanking=False,
+                checkTiming=False,  # 打破双全屏 VSync 死锁：以 win_left 为唯一主时钟
             )
             self.win_right.recordFrameIntervals = False
 
+        # ---- 显存初始化首帧：清除窗口白屏，强制基线灰 ----
+        self.win_control.flip()
+        if not self.debug_mode:
+            self.win_left.flip()
+            self.win_right.flip()
+
         # ---- Control panel stimuli ----
         self.stim_ctrl_left = visual.Circle(
-            self.win_control, fillColor=[-1, -1, -1], lineColor=[-1, -1, -1],
-            radius=self.initial_angle_deg / 2.0, pos=(-15, 0)
+            self.win_control,
+            fillColor=[-1, -1, -1],
+            lineColor=[-1, -1, -1],
+            radius=self.initial_angle_deg / 2.0,
+            pos=(-15, 0),
         )
         self.stim_ctrl_right = visual.Circle(
-            self.win_control, fillColor=[-1, -1, -1], lineColor=[-1, -1, -1],
-            radius=self.initial_angle_deg / 2.0, pos=(15, 0)
+            self.win_control,
+            fillColor=[-1, -1, -1],
+            lineColor=[-1, -1, -1],
+            radius=self.initial_angle_deg / 2.0,
+            pos=(15, 0),
         )
         self.label_left = visual.TextStim(
-            self.win_control, text="[LEFT MONITOR]",
-            pos=(-15, 10), color=[1, 1, 1], height=1.2
+            self.win_control,
+            text="[LEFT MONITOR]",
+            pos=(-15, 10),
+            color=[1, 1, 1],
+            height=1.2,
         )
         self.label_right = visual.TextStim(
-            self.win_control, text="[RIGHT MONITOR]",
-            pos=(15, 10), color=[1, 1, 1], height=1.2
+            self.win_control,
+            text="[RIGHT MONITOR]",
+            pos=(15, 10),
+            color=[1, 1, 1],
+            height=1.2,
         )
         self.preview_text = visual.TextStim(
-            self.win_control, text="[Hardware Live] Waiting for data...",
-            pos=(0, -12), color='green', height=1.0
+            self.win_control,
+            text="[Hardware Live] Waiting for data...",
+            pos=(0, -12),
+            color="green",
+            height=1.0,
         )
 
         if not self.debug_mode:
             self.stim_left = visual.Circle(
-                self.win_left, fillColor=[-1, -1, -1], lineColor=[-1, -1, -1],
-                radius=self.initial_angle_deg / 2.0, pos=(0, 0)
+                self.win_left,
+                fillColor=[-1, -1, -1],
+                lineColor=[-1, -1, -1],
+                radius=self.initial_angle_deg / 2.0,
+                pos=(0, 0),
             )
             self.stim_right = visual.Circle(
-                self.win_right, fillColor=[-1, -1, -1], lineColor=[-1, -1, -1],
-                radius=self.initial_angle_deg / 2.0, pos=(0, 0)
+                self.win_right,
+                fillColor=[-1, -1, -1],
+                lineColor=[-1, -1, -1],
+                radius=self.initial_angle_deg / 2.0,
+                pos=(0, 0),
             )
 
         # ---- Photodiode sync patches ----
         # Control panel: dual mirror indicators (L/R) for V-array symmetry.
         # Positioned within the smaller 1000×500 control window viewport.
         self.sync_patch_ctrl_left = visual.Rect(
-            self.win_control, width=2, height=2,
-            fillColor=[1, 1, 1], lineColor=[1, 1, 1],
-            pos=(-10, -10),    # upper-left area — mirrors left physical screen
-            units='deg',
+            self.win_control,
+            width=2,
+            height=2,
+            fillColor=[1, 1, 1],
+            lineColor=[1, 1, 1],
+            pos=(-10, -10),  # upper-left area — mirrors left physical screen
+            units="deg",
         )
         self.sync_patch_ctrl_right = visual.Rect(
-            self.win_control, width=2, height=2,
-            fillColor=[1, 1, 1], lineColor=[1, 1, 1],
-            pos=(10, -10),     # upper-right area — mirrors right physical screen
-            units='deg',
+            self.win_control,
+            width=2,
+            height=2,
+            fillColor=[1, 1, 1],
+            lineColor=[1, 1, 1],
+            pos=(10, -10),  # upper-right area — mirrors right physical screen
+            units="deg",
         )
         if not self.debug_mode:
-            self.sync_patch_left = self._make_sync_patch(self.win_left, side='left')
-            self.sync_patch_right = self._make_sync_patch(self.win_right, side='right')
+            self.sync_patch_left = self._make_sync_patch(self.win_left, side="left")
+            self.sync_patch_right = self._make_sync_patch(self.win_right, side="right")
 
         self.kb = keyboard.Keyboard()
         self._render_static_baseline()
@@ -649,53 +796,62 @@ class LoomingEngine:
             pass
 
         print(f"[Config] Pattern: {self.pattern_key}")
-        print(f"[Config] {self.total_sessions} session(s) from #{self.start_session_num}")
-        print(f"[Config] t_collision(l/v=100ms,θ₀=2°) = "
-              f"{(0.1 / math.tan(math.radians(2.0)/2)) * 1000:.1f} ms")
+        print(
+            f"[Config] {self.total_sessions} session(s) from #{self.start_session_num}"
+        )
+        print(
+            f"[Config] t_collision(l/v=100ms,θ₀=2°) = "
+            f"{(0.1 / math.tan(math.radians(2.0)/2)) * 1000:.1f} ms"
+        )
 
-        # ---- Wait-for-Start ----
-        print("\n[Ready] Animal adaptation phase. "
-              "Press [SPACE] to start, [ESCAPE] to abort...")
-        self.kb.clearEvents()
-        start_experiment = False
-        while not start_experiment:
-            # 获取实时数据用于 Preview
-            data_batch = self.serial_daemon.drain_queue()
-            if data_batch:
-                # 提取最新的一条元组数据: (t_psy, t_ard, dx, dy, dz, stim_state)
-                latest = data_batch[-1]
-                self.preview_text.text = f"[Hardware Live] dx: {latest[2]:>3} | dy: {latest[3]:>3} | dz: {latest[4]:>3} | valve: {latest[5]}"
+        # ---- Wait-for-Start + Session loop ----
+        # try 上移至适应期之前：适应期的硬件/窗口异常也能滑入 finally 销毁僵尸窗口
+        try:
+            print(
+                "\n[Ready] Animal adaptation phase. "
+                "Press [SPACE] to start, [ESCAPE] to abort..."
+            )
+            self.kb.clearEvents()
+            start_experiment = False
+            while not start_experiment:
+                # 获取实时数据用于 Preview
+                data_batch = self.serial_daemon.drain_queue()
+                if data_batch:
+                    # 提取最新的一条元组数据: (t_psy, t_ard, dx, dy, dz, stim_state)
+                    latest = data_batch[-1]
+                    self.preview_text.text = f"[Hardware Live] dx: {latest[2]:>3} | dy: {latest[3]:>3} | dz: {latest[4]:>3} | valve: {latest[5]}"
 
-            # 渲染 2° 物理基线，并将 Preview 文本安全地叠加到控制面板 (win_control)
-            self._render_static_baseline(extra_ctrl_stims=[self.preview_text])
+                # 渲染 2° 物理基线，并将 Preview 文本安全地叠加到控制面板 (win_control)
+                self._render_static_baseline(extra_ctrl_stims=[self.preview_text])
 
-            keys = self.kb.getKeys(['space', 'escape'], waitRelease=False)
-            for key in keys:
-                if key.name == 'escape':
-                    print("\n[Aborted] Experiment cancelled.")
-                    self._shutdown()
-                    core.quit()
-                if key.name == 'space':
+                keys = self.kb.getKeys(["space", "escape"], waitRelease=False)
+                escape_polled = any(k.name == "escape" for k in keys)
+                if self.emergency_abort or escape_polled:
+                    print("\n[Aborted] Emergency Exit Triggered.")
+                    core.quit()  # 主 Python 线程退出 → SystemExit → finally → _shutdown()
+                if any(k.name == "space" for k in keys):
                     start_experiment = True
 
-        print("\n=== Experiment Started ===")
+            print("\n=== Experiment Started ===")
 
-        # ---- Session loop ----
-        try:
+            # ---- Session loop ----
             for session_idx in range(self.total_sessions):
                 current_session = self.start_session_num + session_idx
                 self.trials = generate_trial_matrix(self.pattern_key)
 
                 # Open session CSV
-                csv_filename = (f"{self.exp_info['Subject ID']}"
-                                f"_session_{current_session}.csv")
+                csv_filename = (
+                    f"{self.exp_info['Subject ID']}" f"_session_{current_session}.csv"
+                )
                 csv_path = os.path.join(output_dir, csv_filename)
                 self.logger.open_session(csv_path, current_session)
 
                 print(f"\n{'='*60}")
-                print(f"  Session {current_session} "
-                      f"({session_idx+1}/{self.total_sessions}) — "
-                      f"{len(self.trials)} trials | {self.pattern_key}")
+                print(
+                    f"  Session {current_session} "
+                    f"({session_idx+1}/{self.total_sessions}) — "
+                    f"{len(self.trials)} trials | {self.pattern_key}"
+                )
                 print(f"{'='*60}")
 
                 for trial_idx, trial in enumerate(self.trials):
@@ -707,10 +863,12 @@ class LoomingEngine:
                         # First trial — still need to pre-arm before looming
                         self._pre_arm_arduino(trial)
 
-                    print(f"Trial {trial_idx+1}/{len(self.trials)} | "
-                          f"{trial['type']} | "
-                          f"TTC={trial.get('target_ttc_ms','-')}ms | "
-                          f"Wind={trial.get('wind_dir','-')}")
+                    print(
+                        f"Trial {trial_idx+1}/{len(self.trials)} | "
+                        f"{trial['type']} | "
+                        f"TTC={trial.get('target_ttc_ms','-')}ms | "
+                        f"Wind={trial.get('wind_dir','-')}"
+                    )
                     self._run_single_trial(trial_idx, trial)
                     # Safe flush after each trial (non-timing-critical)
                     self.logger.flush_file()
@@ -787,22 +945,21 @@ class LoomingEngine:
         For baseline_wind: handled separately (random delay, no T₀ anchor)
         For baseline_visual: no wind at all
         """
-        if trial['type'] == 'baseline_visual':
+        if trial["type"] == "baseline_visual":
             return None
-        if trial['type'] == 'baseline_wind':
+        if trial["type"] == "baseline_wind":
             return None  # baseline_wind uses its own random-delay logic
 
         # looming_wind
-        _ttc = trial.get('target_ttc_ms')
-        lv_ms = trial.get('lv_ratio_ms')
+        _ttc = trial.get("target_ttc_ms")
+        lv_ms = trial.get("lv_ratio_ms")
         if _ttc is None or lv_ms is None:
             return None
 
         lv_sec = lv_ms / 1000.0
-        t_collision_sec = lv_sec / math.tan(
-            math.radians(self.initial_angle_deg) / 2)
+        t_collision_sec = lv_sec / math.tan(math.radians(self.initial_angle_deg) / 2)
         t_collision_ms = int(round(t_collision_sec * 1000))
-        delay_ms = t_collision_ms + _ttc   # ttc is negative before collision
+        delay_ms = t_collision_ms + _ttc  # ttc is negative before collision
         return max(0, delay_ms)
 
     def _pre_arm_arduino(self, trial: Dict[str, Any]):
@@ -814,14 +971,15 @@ class LoomingEngine:
         if delay_ms is None:
             return  # No valve for this trial type
 
-        wind_dir = trial.get('wind_dir', 'left')
+        wind_dir = trial.get("wind_dir", "left")
         self.serial_daemon.send_arm_command(wind_dir, delay_ms)
         self.logger.log_event(
-            "arduino_armed", self.clock.getTime(),
+            "arduino_armed",
+            self.clock.getTime(),
             direction=wind_dir,
             delay_ms=delay_ms,
-            trial_type=trial['type'],
-            target_ttc_ms=trial.get('target_ttc_ms'),
+            trial_type=trial["type"],
+            target_ttc_ms=trial.get("target_ttc_ms"),
         )
 
     # ------------------------------------------------------------------
@@ -839,43 +997,44 @@ class LoomingEngine:
         t0 = self.clock.getTime()
         while (self.clock.getTime() - t0) < duration:
             self._render_static_baseline()
-            self._drain_and_log()       # ← every frame
-            if self.kb.getKeys(['escape']):
-                print("Aborted during ITI.")
-                self._shutdown()
+            self._drain_and_log()  # ← every frame
+            if self.emergency_abort or self.kb.getKeys(["escape"]):
+                print("\n[Aborted] Emergency Exit Triggered (ITI).")
                 core.quit()
 
     # ------------------------------------------------------------------
     def _wait_isi(self, duration: float, next_session_num: int):
         """ISI: no session file is open, drain-and-discard."""
         countdown = visual.TextStim(
-            self.win_control, text='', pos=(0, -8),
-            color='yellow', height=1.5, bold=True,
+            self.win_control,
+            text="",
+            pos=(0, -8),
+            color="yellow",
+            height=1.5,
+            bold=True,
         )
         t0 = self.clock.getTime()
         while True:
             remaining = duration - (self.clock.getTime() - t0)
             if remaining <= 0:
                 break
-            countdown.text = (f"ISI: {int(remaining)}s\n"
-                              f"Next → Session {next_session_num}")
+            countdown.text = (
+                f"ISI: {int(remaining)}s\n" f"Next → Session {next_session_num}"
+            )
             self._render_static_baseline(extra_ctrl_stims=[countdown])
             self.serial_daemon.drain_queue()  # discard — between sessions
-            if self.kb.getKeys(['escape']):
-                print("Aborted during ISI.")
-                self._shutdown()
+            if self.emergency_abort or self.kb.getKeys(["escape"]):
+                print("\n[Aborted] Emergency Exit Triggered (ISI).")
                 core.quit()
 
     # ------------------------------------------------------------------
     def _resolve_active_window(self, trial):
-        side = trial.get('screen_side')
-        wind = trial.get('wind_dir', 'none')
-        if side == 'right' or wind == 'right':
-            return (self.stim_ctrl_right,
-                    self.win_right, self.stim_right, 'right')
+        side = trial.get("screen_side")
+        wind = trial.get("wind_dir", "none")
+        if side == "right" or wind == "right":
+            return (self.stim_ctrl_right, self.win_right, self.stim_right, "right")
         else:
-            return (self.stim_ctrl_left,
-                    self.win_left, self.stim_left, 'left')
+            return (self.stim_ctrl_left, self.win_left, self.stim_left, "left")
 
     # ------------------------------------------------------------------
     def _resolve_sync_patch(self, side: str):
@@ -883,11 +1042,12 @@ class LoomingEngine:
         Return (physical_patch, ctrl_mirror_patch) for the active side.
         In debug mode physical_patch is None (no physical screens).
         """
-        ctrl_mirror = (self.sync_patch_ctrl_right if side == 'right'
-                       else self.sync_patch_ctrl_left)
+        ctrl_mirror = (
+            self.sync_patch_ctrl_right if side == "right" else self.sync_patch_ctrl_left
+        )
         if self.debug_mode:
             return None, ctrl_mirror
-        if side == 'right':
+        if side == "right":
             return self.sync_patch_right, ctrl_mirror
         return self.sync_patch_left, ctrl_mirror
 
@@ -898,54 +1058,52 @@ class LoomingEngine:
         # Advance habituation counters + persist
         self.logger.advance_trial()
 
-        _ttc = trial.get('target_ttc_ms')
-        wind_dir = trial.get('wind_dir', 'none')
+        _ttc = trial.get("target_ttc_ms")
+        wind_dir = trial.get("wind_dir", "none")
 
         self.logger.log_event(
-            "trial_start", t_start,
+            "trial_start",
+            t_start,
             trial_index=trial_idx,
             target_ttc_ms=_ttc,
             pattern=self.pattern_key,
-            **{k: v for k, v in trial.items() if k != 'target_ttc_ms'}
+            **{k: v for k, v in trial.items() if k != "target_ttc_ms"},
         )
 
-        active_ctrl, active_win, active_stim, side = \
-            self._resolve_active_window(trial)
+        active_ctrl, active_win, active_stim, side = self._resolve_active_window(trial)
         print(f"  [Route] screen={side}")
 
         # ==============================================================
         # LOOMING (baseline_visual | looming_wind)
         # ==============================================================
-        if trial['type'] in ['baseline_visual', 'looming_wind']:
-            lv_sec = trial['lv_ratio_ms'] / 1000.0
+        if trial["type"] in ["baseline_visual", "looming_wind"]:
+            lv_sec = trial["lv_ratio_ms"] / 1000.0
 
             # t_collision from 2° baseline (pure physics)
-            t_collision = lv_sec / math.tan(
-                math.radians(self.initial_angle_deg) / 2)
+            t_collision = lv_sec / math.tan(math.radians(self.initial_angle_deg) / 2)
 
-            print(f"  [Phys] θ₀=2° l/v={trial['lv_ratio_ms']}ms → "
-                  f"t_col={t_collision*1000:.1f}ms")
+            print(
+                f"  [Phys] θ₀=2° l/v={trial['lv_ratio_ms']}ms → "
+                f"t_col={t_collision*1000:.1f}ms"
+            )
 
             # Inactive side
-            if side == 'left':
+            if side == "left":
                 _inact_ctrl = self.stim_ctrl_right
-                _inact_win  = self.win_right if not self.debug_mode else None
+                _inact_win = self.win_right if not self.debug_mode else None
                 _inact_stim = self.stim_right if not self.debug_mode else None
             else:
                 _inact_ctrl = self.stim_ctrl_left
-                _inact_win  = self.win_left  if not self.debug_mode else None
+                _inact_win = self.win_left if not self.debug_mode else None
                 _inact_stim = self.stim_left if not self.debug_mode else None
-
-            if _inact_win is not None:
-                _inact_win.waitBlanking = False
 
             # Sync patches for photodiode trigger (physical + control mirror)
             sync_patch, sync_patch_ctrl_mirror = self._resolve_sync_patch(side)
 
             t0_loom = self.clock.getTime()
             first_logged = False
-            coll_logged  = False
-            frame_count  = 0
+            coll_logged = False
+            frame_count = 0
             frame_ts: List[float] = [] if self.debug_mode else None
 
             while True:
@@ -953,9 +1111,12 @@ class LoomingEngine:
                 elapsed = now - t0_loom
 
                 if elapsed >= t_collision + 1.0:
-                    self.logger.log_event("looming_completed", now,
-                                          elapsed=elapsed,
-                                          t_collision=t_collision)
+                    self.logger.log_event(
+                        "looming_completed",
+                        now,
+                        elapsed=elapsed,
+                        t_collision=t_collision,
+                    )
                     break
 
                 # Angular computation
@@ -965,9 +1126,12 @@ class LoomingEngine:
                 else:
                     theta = self.max_angle_deg
                     if not coll_logged:
-                        self.logger.log_event("collision_reached", now,
-                                              elapsed=elapsed,
-                                              t_collision=t_collision)
+                        self.logger.log_event(
+                            "collision_reached",
+                            now,
+                            elapsed=elapsed,
+                            t_collision=t_collision,
+                        )
                         coll_logged = True
 
                 # ---- Control panel ----
@@ -982,30 +1146,39 @@ class LoomingEngine:
                 if frame_count == 0 and sync_patch_ctrl_mirror is not None:
                     sync_patch_ctrl_mirror.draw()
 
-                ctrl_flip = self.win_control.flip()
-
-                # ---- Physical window ----
+                # ---- Physical window draws (must happen BEFORE flip sequence) ----
                 if not self.debug_mode and active_win is not None:
                     active_stim.radius = theta / 2.0
                     active_stim.draw()
                     # Frame 0: flash sync patch on the active physical window
                     if frame_count == 0 and sync_patch is not None:
                         sync_patch.draw()
-                    flip_t = active_win.flip()
                     if _inact_stim is not None and _inact_win is not None:
                         _inact_stim.radius = self.initial_angle_deg / 2.0
                         _inact_stim.draw()
-                        _inact_win.flip()
+
+                # ---- 强制绝对硬件翻转序列 (Hardware Flip Sequence) ----
+                if not self.debug_mode:
+                    # 生产模式：先推所有从机，最后推主机阻塞并获取时间戳
+                    self.win_control.flip()
+                    self.win_right.flip()
+                    flip_t = self.win_left.flip()
                 else:
-                    flip_t = ctrl_flip
+                    # Debug 模式：仅单屏幕工作，直接翻转并获取时间戳
+                    flip_t = self.win_control.flip()
+                    if flip_t is None:
+                        flip_t = core.getTime()
 
                 if self.debug_mode:
                     frame_ts.append(flip_t)
                 if not first_logged:
-                    self.logger.log_event("first_frame", flip_t,
-                                          initial_angle=theta,
-                                          active_screen=side,
-                                          sync_patch_drawn=True)
+                    self.logger.log_event(
+                        "first_frame",
+                        flip_t,
+                        initial_angle=theta,
+                        active_screen=side,
+                        sync_patch_drawn=True,
+                    )
                     first_logged = True
 
                 frame_count += 1
@@ -1013,28 +1186,30 @@ class LoomingEngine:
                 # ★ Drain & log every frame — no data loss
                 self._drain_and_log()
 
-                if self.kb.getKeys(['escape']):
+                if self.emergency_abort or self.kb.getKeys(["escape"]):
+                    print("\n[Aborted] Emergency Exit Triggered (Looming).")
                     core.quit()
-
-            if _inact_win is not None:
-                _inact_win.waitBlanking = True
 
             if self.debug_mode and frame_ts and len(frame_ts) > 1:
                 import numpy as np
+
                 ifis = np.diff(frame_ts) * 1000.0
-                print(f"  [IFI] frames={len(frame_ts)} "
-                      f"mean={ifis.mean():.2f}ms std={ifis.std():.2f}ms "
-                      f"min={ifis.min():.2f}ms max={ifis.max():.2f}ms")
+                print(
+                    f"  [IFI] frames={len(frame_ts)} "
+                    f"mean={ifis.mean():.2f}ms std={ifis.std():.2f}ms "
+                    f"min={ifis.min():.2f}ms max={ifis.max():.2f}ms"
+                )
 
         # ==============================================================
         # BASELINE WIND (2° visual baseline maintained, wind only)
         # ==============================================================
-        elif trial['type'] == 'baseline_wind':
+        elif trial["type"] == "baseline_wind":
             delay = random.uniform(0.1, 1.2)
             post_obs = random.uniform(1.0, 2.0)
             print(f"  [Wind] delay={delay*1000:.0f}ms post={post_obs:.2f}s")
-            self.logger.log_event("baseline_wind_start", self.clock.getTime(),
-                                  random_delay_sec=delay)
+            self.logger.log_event(
+                "baseline_wind_start", self.clock.getTime(), random_delay_sec=delay
+            )
 
             t0 = self.clock.getTime()
             fire_time = None
@@ -1050,11 +1225,14 @@ class LoomingEngine:
                 if elapsed >= delay and not trigger_sent:
                     # baseline_wind: direct single-byte trigger (no T₀ architecture)
                     # Send as arm + immediate synthetic T₀
-                    dir_char = 'R' if wind_dir == 'right' else 'L'
+                    dir_char = "R" if wind_dir == "right" else "L"
                     self.serial_daemon.send_arm_command(wind_dir, 0)
-                    self.logger.log_event("wind_triggered", now,
-                                          random_delay_sec=delay,
-                                          wind_direction=wind_dir)
+                    self.logger.log_event(
+                        "wind_triggered",
+                        now,
+                        random_delay_sec=delay,
+                        wind_direction=wind_dir,
+                    )
                     trigger_sent = True
                     fire_time = now
 
@@ -1065,17 +1243,31 @@ class LoomingEngine:
                 self.stim_ctrl_right.draw()
                 self.label_left.draw()
                 self.label_right.draw()
-                self.win_control.flip()
 
-                if not self.debug_mode and active_win is not None:
-                    active_stim.radius = self.initial_angle_deg / 2.0
-                    active_stim.draw()
-                    active_win.flip()
+                # Draw 2° baseline on physical windows before flip sequence
+                if not self.debug_mode:
+                    if self.stim_left is not None:
+                        self.stim_left.radius = self.initial_angle_deg / 2.0
+                        self.stim_left.draw()
+                    if self.stim_right is not None:
+                        self.stim_right.radius = self.initial_angle_deg / 2.0
+                        self.stim_right.draw()
+
+                # ---- 强制绝对硬件翻转序列 (Hardware Flip Sequence) ----
+                if not self.debug_mode:
+                    # 生产模式：先推所有从机，最后推主机阻塞节拍
+                    self.win_control.flip()
+                    self.win_right.flip()
+                    self.win_left.flip()
+                else:
+                    # Debug 模式：仅单屏幕工作，单次翻转
+                    self.win_control.flip()
 
                 # ★ Drain & log every frame
                 self._drain_and_log()
 
-                if self.kb.getKeys(['escape']):
+                if self.emergency_abort or self.kb.getKeys(["escape"]):
+                    print("\n[Aborted] Emergency Exit Triggered (Wind).")
                     core.quit()
 
         # Post-trial baseline
@@ -1087,15 +1279,16 @@ class LoomingEngine:
 # GUI & Entrypoint
 # ==============================================================================
 
+
 def _list_serial_ports() -> List[str]:
     ports = []
     if HAS_SERIAL:
         ports = [p.device for p in serial.tools.list_ports.comports()]
-    defaults = ['mock']
-    if sys.platform == 'win32':
-        defaults.append('COM3')
+    defaults = ["mock"]
+    if sys.platform == "win32":
+        defaults.append("COM3")
     else:
-        defaults.append('/dev/ttyACM0')
+        defaults.append("/dev/ttyACM0")
     seen = set()
     result = []
     for p in defaults + ports:
@@ -1109,36 +1302,33 @@ def launch_experiment_gui() -> Optional[Dict[str, Any]]:
     dlg = gui.Dlg(title="BioMoR Looming Paradigms")
 
     dlg.addText("=== Core Experiment Parameters ===")
-    dlg.addField('Subject ID', label='✱Subject ID:',
-                 initial='cricket_001')
-    dlg.addField('Session Number', label='✱Start Session #:',
-                 initial=1)
-    dlg.addField('Total Sessions', label='Total Sessions:',
-                 initial=2)
-    dlg.addField('Experiment Pattern', label='✱Pattern:',
-                 choices=PATTERN_CHOICES,
-                 tip='Single-pattern locking per subject')
-    dlg.addField('ITI Range (sec)', label='ITI Range (sec):',
-                 initial='60-90')
-    dlg.addField('ISI Range (sec)', label='ISI Range (sec):',
-                 initial='300-600')
+    dlg.addField("Subject ID", label="✱Subject ID:", initial="cricket_001")
+    dlg.addField("Session Number", label="✱Start Session #:", initial=1)
+    dlg.addField("Total Sessions", label="Total Sessions:", initial=2)
+    dlg.addField(
+        "Experiment Pattern",
+        label="✱Pattern:",
+        choices=PATTERN_CHOICES,
+        tip="Single-pattern locking per subject",
+    )
+    dlg.addField("ITI Range (sec)", label="ITI Range (sec):", initial="60-90")
+    dlg.addField("ISI Range (sec)", label="ISI Range (sec):", initial="300-600")
 
     dlg.addText("\n\n")
     dlg.addText("=== Hardware ===")
-    dlg.addField('Serial Port', label='Serial Port:',
-                 choices=_list_serial_ports(),
-                 tip='Arduino port or "mock"')
-    dlg.addField('Left Screen ID', label='Left Screen ID:',
-                 initial='1')
-    dlg.addField('Right Screen ID', label='Right Screen ID:',
-                 initial='2')
+    dlg.addField(
+        "Serial Port",
+        label="Serial Port:",
+        choices=_list_serial_ports(),
+        tip='Arduino port or "mock"',
+    )
+    dlg.addField("Left Screen ID", label="Left Screen ID:", initial="1")
+    dlg.addField("Right Screen ID", label="Right Screen ID:", initial="2")
 
     dlg.addText("\n\n")
     dlg.addText("=== Debug ===")
-    dlg.addField('Debug Mode (Single Screen)',
-                 label='Debug Mode:', initial=True)
-    dlg.addField('Save Terminal Log (Debug)',
-                 label='Save Terminal Log:', initial=False)
+    dlg.addField("Debug Mode (Single Screen)", label="Debug Mode:", initial=True)
+    dlg.addField("Save Terminal Log (Debug)", label="Save Terminal Log:", initial=False)
 
     ok_data = dlg.show()
     return ok_data if dlg.OK else None
