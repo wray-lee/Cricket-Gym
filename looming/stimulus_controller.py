@@ -1276,8 +1276,14 @@ class LoomingEngine:
 
 
 # ==============================================================================
-# GUI & Entrypoint
+# GUI & Entrypoint (customtkinter — dark industrial-grade UI)
 # ==============================================================================
+
+_CTK_AVAILABLE = True
+try:
+    import customtkinter as ctk
+except ImportError:
+    _CTK_AVAILABLE = False
 
 
 def _list_serial_ports() -> List[str]:
@@ -1299,39 +1305,257 @@ def _list_serial_ports() -> List[str]:
 
 
 def launch_experiment_gui() -> Optional[Dict[str, Any]]:
-    dlg = gui.Dlg(title="BioMoR Looming Paradigms")
+    """Launch a modern customtkinter configuration panel.
+    Returns the EXACT same config dict as the original PsychoPy GUI,
+    with identical keys and value types.  Returns None if cancelled.
+    """
+    if not _CTK_AVAILABLE:
+        # Fallback to original PsychoPy GUI if customtkinter is missing
+        import psychopy.gui as _psychopy_gui
 
-    dlg.addText("=== Core Experiment Parameters ===")
-    dlg.addField("Subject ID", label="✱Subject ID:", initial="cricket_001")
-    dlg.addField("Session Number", label="✱Start Session #:", initial=1)
-    dlg.addField("Total Sessions", label="Total Sessions:", initial=2)
-    dlg.addField(
-        "Experiment Pattern",
-        label="✱Pattern:",
-        choices=PATTERN_CHOICES,
-        tip="Single-pattern locking per subject",
+        dlg = _psychopy_gui.Dlg(title="BioMoR Looming Paradigms")
+        dlg.addText("=== Core Experiment Parameters ===")
+        dlg.addField("Subject ID", label="✱Subject ID:", initial="cricket_001")
+        dlg.addField("Session Number", label="✱Start Session #:", initial=1)
+        dlg.addField("Total Sessions", label="Total Sessions:", initial=2)
+        dlg.addField(
+            "Experiment Pattern",
+            label="✱Pattern:",
+            choices=PATTERN_CHOICES,
+            tip="Single-pattern locking per subject",
+        )
+        dlg.addField("ITI Range (sec)", label="ITI Range (sec):", initial="60-90")
+        dlg.addField("ISI Range (sec)", label="ISI Range (sec):", initial="300-600")
+        dlg.addText("\n\n=== Hardware ===")
+        dlg.addField(
+            "Serial Port",
+            label="Serial Port:",
+            choices=_list_serial_ports(),
+            tip='Arduino port or "mock"',
+        )
+        dlg.addField("Left Screen ID", label="Left Screen ID:", initial="1")
+        dlg.addField("Right Screen ID", label="Right Screen ID:", initial="2")
+        dlg.addText("\n\n=== Debug ===")
+        dlg.addField("Debug Mode (Single Screen)", label="Debug Mode:", initial=True)
+        dlg.addField(
+            "Save Terminal Log (Debug)", label="Save Terminal Log:", initial=False
+        )
+        ok_data = dlg.show()
+        return ok_data if dlg.OK else None
+
+    # ---- CTk modern UI below ----
+    ctk.set_appearance_mode("dark")
+    ctk.set_default_color_theme("dark-blue")
+
+    root = ctk.CTk()
+    root.title("BioMoR — Looming Paradigm Controller")
+    root.geometry("900x600")
+    root.resizable(True, True)
+
+    result: Dict[str, Any] = {}
+    cancelled = True
+
+    # ---- Font & style constants ----
+    FONT = ("Segoe UI", 13)
+    FONT_BOLD = ("Segoe UI", 13, "bold")
+    FONT_HEADER = ("Segoe UI", 15, "bold")
+    FONT_SMALL = ("Segoe UI", 11)
+
+    # =================================================================
+    # Outer frame (pack) — all children use grid inside their own frame
+    # =================================================================
+    outer = ctk.CTkFrame(root, fg_color="transparent")
+    outer.pack(fill="both", expand=True, padx=16, pady=(16, 8))
+
+    # ---- Title ----
+    title_label = ctk.CTkLabel(
+        outer,
+        text="🧬 BioMoR — Cricket VR Closed-Loop Configuration",
+        font=("Segoe UI", 18, "bold"),
     )
-    dlg.addField("ITI Range (sec)", label="ITI Range (sec):", initial="60-90")
-    dlg.addField("ISI Range (sec)", label="ISI Range (sec):", initial="300-600")
+    title_label.grid(row=0, column=0, columnspan=3, pady=(0, 14), sticky="w")
 
-    dlg.addText("\n\n")
-    dlg.addText("=== Hardware ===")
-    dlg.addField(
-        "Serial Port",
-        label="Serial Port:",
-        choices=_list_serial_ports(),
-        tip='Arduino port or "mock"',
+    # =================================================================
+    # Card 1: Experiment & Subject (LEFT)
+    # =================================================================
+    card1 = ctk.CTkFrame(outer, corner_radius=8, border_width=1, border_color="#3a3a3a")
+    card1.grid(row=1, column=0, padx=(0, 8), sticky="nsew")
+    outer.columnconfigure(0, weight=1)
+
+    ctk.CTkLabel(card1, text="🧪 Subject and experiment", font=FONT_HEADER).grid(
+        row=0, column=0, columnspan=2, padx=14, pady=(12, 8), sticky="w"
     )
-    dlg.addField("Left Screen ID", label="Left Screen ID:", initial="1")
-    dlg.addField("Right Screen ID", label="Right Screen ID:", initial="2")
 
-    dlg.addText("\n\n")
-    dlg.addText("=== Debug ===")
-    dlg.addField("Debug Mode (Single Screen)", label="Debug Mode:", initial=True)
-    dlg.addField("Save Terminal Log (Debug)", label="Save Terminal Log:", initial=False)
+    _make_label(card1, "✱ Subject number", 1)
+    entry_subject = ctk.CTkEntry(card1, font=FONT, corner_radius=6, width=220)
+    entry_subject.insert(0, "cricket_001")
+    entry_subject.grid(row=2, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
 
-    ok_data = dlg.show()
-    return ok_data if dlg.OK else None
+    _make_label(card1, "✱ Start Session number", 3)
+    entry_session = ctk.CTkEntry(card1, font=FONT, corner_radius=6, width=220)
+    entry_session.insert(0, "1")
+    entry_session.grid(row=4, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    _make_label(card1, "Total Session count", 5)
+    entry_total = ctk.CTkEntry(card1, font=FONT, corner_radius=6, width=220)
+    entry_total.insert(0, "2")
+    entry_total.grid(row=6, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    # =================================================================
+    # Card 2: Paradigm & Timing (CENTER)
+    # =================================================================
+    card2 = ctk.CTkFrame(outer, corner_radius=8, border_width=1, border_color="#3a3a3a")
+    card2.grid(row=1, column=1, padx=8, sticky="nsew")
+    outer.columnconfigure(1, weight=1)
+
+    ctk.CTkLabel(card2, text="⏱️ Paradigm and Timing", font=FONT_HEADER).grid(
+        row=0, column=0, columnspan=2, padx=14, pady=(12, 8), sticky="w"
+    )
+
+    _make_label(card2, "✱ Experiment Paradigm", 1)
+    pattern_var = ctk.StringVar(value=PATTERN_CHOICES[0])
+    opt_pattern = ctk.CTkOptionMenu(
+        card2,
+        values=PATTERN_CHOICES,
+        variable=pattern_var,
+        font=FONT,
+        corner_radius=6,
+        dropdown_font=FONT_SMALL,
+    )
+    opt_pattern.grid(row=2, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    _make_label(card2, "ITI Range (sec)", 3)
+    entry_iti = ctk.CTkEntry(card2, font=FONT, corner_radius=6, width=220)
+    entry_iti.insert(0, "60-90")
+    entry_iti.grid(row=4, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    _make_label(card2, "ISI Range (sec)", 5)
+    entry_isi = ctk.CTkEntry(card2, font=FONT, corner_radius=6, width=220)
+    entry_isi.insert(0, "300-600")
+    entry_isi.grid(row=6, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    # =================================================================
+    # Card 3: System & Hardware (RIGHT)
+    # =================================================================
+    card3 = ctk.CTkFrame(outer, corner_radius=8, border_width=1, border_color="#3a3a3a")
+    card3.grid(row=1, column=2, padx=(8, 0), sticky="nsew")
+    outer.columnconfigure(2, weight=1)
+
+    ctk.CTkLabel(card3, text="⚙️ System and Hardware", font=FONT_HEADER).grid(
+        row=0, column=0, columnspan=2, padx=14, pady=(12, 8), sticky="w"
+    )
+
+    _make_label(card3, "Serial Port", 1)
+    serial_ports = _list_serial_ports()
+    serial_var = ctk.StringVar(value=serial_ports[0] if serial_ports else "mock")
+    opt_serial = ctk.CTkOptionMenu(
+        card3,
+        values=serial_ports,
+        variable=serial_var,
+        font=FONT,
+        corner_radius=6,
+        dropdown_font=FONT_SMALL,
+    )
+    opt_serial.grid(row=2, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    _make_label(card3, "Left Screen ID(Logger Screen ID)", 3)
+    entry_left = ctk.CTkEntry(card3, font=FONT, corner_radius=6, width=220)
+    entry_left.insert(0, "1")
+    entry_left.grid(row=4, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    _make_label(card3, "Right Screen ID(Reference Screen ID)", 5)
+    entry_right = ctk.CTkEntry(card3, font=FONT, corner_radius=6, width=220)
+    entry_right.insert(0, "2")
+    entry_right.grid(row=6, column=0, columnspan=2, padx=14, pady=(0, 8), sticky="ew")
+
+    # ---- Debug toggles ----
+    debug_frame = ctk.CTkFrame(card3, fg_color="transparent")
+    debug_frame.grid(row=7, column=0, columnspan=2, padx=14, pady=(10, 4), sticky="ew")
+
+    debug_var = ctk.BooleanVar(value=True)
+    switch_debug = ctk.CTkSwitch(
+        debug_frame,
+        text="🖥️  Debug Mode (Single Screen)",
+        variable=debug_var,
+        font=FONT,
+    )
+    switch_debug.grid(row=0, column=0, padx=(0, 10), pady=4, sticky="w")
+
+    log_var = ctk.BooleanVar(value=False)
+    switch_log = ctk.CTkSwitch(
+        debug_frame,
+        text="📄  Save Terminal Log (Debug)",
+        variable=log_var,
+        font=FONT,
+    )
+    switch_log.grid(row=1, column=0, padx=(0, 10), pady=4, sticky="w")
+
+    # =================================================================
+    # Bottom action bar
+    # =================================================================
+    action_frame = ctk.CTkFrame(root, fg_color="transparent")
+    action_frame.pack(fill="x", padx=16, pady=(0, 16))
+
+    def _on_submit():
+        nonlocal cancelled, result
+        try:
+            result = {
+                "Subject ID": entry_subject.get().strip(),
+                "Session Number": int(entry_session.get().strip()),
+                "Total Sessions": int(entry_total.get().strip()),
+                "Experiment Pattern": pattern_var.get(),
+                "ITI Range (sec)": entry_iti.get().strip(),
+                "ISI Range (sec)": entry_isi.get().strip(),
+                "Serial Port": serial_var.get(),
+                "Left Screen ID": int(entry_left.get().strip()),
+                "Right Screen ID": int(entry_right.get().strip()),
+                "Debug Mode (Single Screen)": debug_var.get(),
+                "Save Terminal Log (Debug)": log_var.get(),
+            }
+        except (ValueError, TypeError):
+            return  # stays open until inputs are valid
+        cancelled = False
+        root.destroy()
+
+    btn_start = ctk.CTkButton(
+        action_frame,
+        text="▶  Start Experiment",
+        command=_on_submit,
+        font=FONT_BOLD,
+        corner_radius=8,
+        height=44,
+        fg_color="#1f6aa5",
+        hover_color="#185078",
+    )
+    btn_start.pack(side="left", padx=(0, 12))
+
+    btn_cancel = ctk.CTkButton(
+        action_frame,
+        text="✕  Cancel",
+        command=root.destroy,
+        font=FONT_BOLD,
+        corner_radius=8,
+        height=44,
+        fg_color="#555555",
+        hover_color="#444444",
+    )
+    btn_cancel.pack(side="left")
+
+    # =================================================================
+    # Grid weight config for cards to fill evenly
+    # =================================================================
+    for card in (card1, card2, card3):
+        card.columnconfigure(0, weight=1)
+        card.columnconfigure(1, weight=1)
+
+    root.mainloop()
+    return result if not cancelled else None
+
+
+def _make_label(parent: ctk.CTkFrame, text: str, row: int):
+    """Helper: create a small label above an entry inside a card."""
+    lbl = ctk.CTkLabel(parent, text=text, font=("Segoe UI", 12), anchor="w")
+    lbl.grid(row=row, column=0, columnspan=2, padx=14, pady=(4, 0), sticky="w")
 
 
 if __name__ == "__main__":
