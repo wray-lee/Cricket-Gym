@@ -11,8 +11,8 @@ Architecture (Photodiode T₀)
 
   Main Thread (PsychoPy)
     ITI phase:     compute delay_ms, send <DIR,DELAY_MS> to pre-arm Arduino.
-    Frame 0:       draw sync_patch (white flash) → photodiode → Arduino ISR → T₀
-    Frame 1+:      normal looming render, sync_patch NOT drawn.
+    Stimulus Phase: draw sync_patch continuously to provide a steady high-TTL gate
+                    for the photodiode.  Disappears naturally during ITI/Baseline.
     Every frame:   drain queue → write ALL tuples to CSV → render → flip
 
   Trigger flow:
@@ -467,7 +467,8 @@ class LoomingEngine:
     zero motion data loss from the 200 Hz Arduino stream.
 
     Photodiode sync: self.sync_patch — white square at screen corner,
-    drawn ONLY on Frame 0 of each looming trial to flash the photodiode.
+    drawn CONTINUOUSLY throughout the entire looming stimulus phase to provide
+    a steady high-TTL gate for the photodiode.  Disappears during ITI/Baseline.
     """
 
     def __init__(self, exp_info: Dict[str, Any]):
@@ -1142,8 +1143,8 @@ class LoomingEngine:
                 self.label_left.draw()
                 self.label_right.draw()
 
-                # Frame 0: draw side-specific sync mirror on control panel
-                if frame_count == 0 and sync_patch_ctrl_mirror is not None:
+                # Draw side-specific sync mirror on control panel (continuously)
+                if sync_patch_ctrl_mirror is not None:
                     sync_patch_ctrl_mirror.draw()
 
                 # ---- Physical window draws (must happen BEFORE flip sequence) ----
@@ -1151,7 +1152,7 @@ class LoomingEngine:
                     active_stim.radius = theta / 2.0
                     active_stim.draw()
                     # Frame 0: flash sync patch on the active physical window
-                    if frame_count == 0 and sync_patch is not None:
+                    if sync_patch is not None:
                         sync_patch.draw()
                     if _inact_stim is not None and _inact_win is not None:
                         _inact_stim.radius = self.initial_angle_deg / 2.0
