@@ -1,0 +1,86 @@
+[LoomingEngine] Debug Mode ON — single control panel on screen 0
+[Config] Will run 1 session(s) starting from Session 1.
+
+[Ready] Animal adaptation phase. Press [SPACE] to start, or [ESCAPE] to abort...
+
+=== Experiment Started ===
+
+==================================================
+  Session 1 (1/1) — 18 trials
+==================================================
+Running Trial 1 | Type: looming_wind | TTC: 200ms | Wind: right
+  [Routing] Active screen: right
+  [TTC] target_ttc_ms=200ms → t_collision=1143.01ms, t_trigger=1343.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=6.0663 | Delay: 0ms | Dir: right
+  [IFI Diag] Trial 1: frames=126, mean=17.20ms, std=4.67ms, min=15.91ms, max=66.36ms
+
+--- ITI before Trial 2/18: 1.7s ---
+Running Trial 2 | Type: baseline_wind | TTC: Nonems | Wind: right
+  [Routing] Active screen: right
+  [Baseline Wind] Random delay: 749ms | post-trigger obs: 1.72s
+[HardwareTrigger] MOCK FIRED: BASELINE_WIND_TRIGGER at t=9.3351 | Delay: 0ms | Dir: right
+
+--- ITI before Trial 3/18: 1.4s ---
+Running Trial 3 | Type: baseline_wind | TTC: Nonems | Wind: left
+  [Routing] Active screen: left
+  [Baseline Wind] Random delay: 176ms | post-trigger obs: 1.55s
+[HardwareTrigger] MOCK FIRED: BASELINE_WIND_TRIGGER at t=12.7022 | Delay: 0ms | Dir: left
+
+--- ITI before Trial 4/18: 1.5s ---
+Running Trial 4 | Type: looming_wind | TTC: -119ms | Wind: right
+  [Routing] Active screen: right
+  [TTC] target_ttc_ms=-119ms → t_collision=1143.01ms, t_trigger=1024.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=16.7828 | Delay: 0ms | Dir: right
+  [IFI Diag] Trial 4: frames=129, mean=16.67ms, std=0.26ms, min=15.84ms, max=17.56ms
+
+--- ITI before Trial 5/18: 1.8s ---
+Running Trial 5 | Type: looming_wind | TTC: -373ms | Wind: left
+  [Routing] Active screen: left
+  [TTC] target_ttc_ms=-373ms → t_collision=1143.01ms, t_trigger=770.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=20.5498 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 5: frames=129, mean=16.67ms, std=0.26ms, min=15.96ms, max=17.34ms
+
+--- ITI before Trial 6/18: 1.1s ---
+Running Trial 6 | Type: looming_wind | TTC: 200ms | Wind: left
+  [Routing] Active screen: left
+  [TTC] target_ttc_ms=200ms → t_collision=1143.01ms, t_trigger=1343.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=24.4331 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 6: frames=129, mean=16.67ms, std=0.25ms, min=15.96ms, max=17.58ms
+
+--- ITI before Trial 7/18: 1.5s ---
+Running Trial 7 | Type: looming_wind | TTC: -308ms | Wind: left
+  [Routing] Active screen: left
+  [TTC] target_ttc_ms=-308ms → t_collision=1143.01ms, t_trigger=835.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=27.5664 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 7: frames=129, mean=16.67ms, std=0.25ms, min=16.05ms, max=17.43ms
+
+--- ITI before Trial 8/18: 1.2s ---
+Running Trial 8 | Type: looming_wind | TTC: -261ms | Wind: left
+  [Routing] Active screen: left
+  [TTC] target_ttc_ms=-261ms → t_collision=1143.01ms, t_trigger=882.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=31.0165 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 8: frames=129, mean=16.67ms, std=0.29ms, min=15.47ms, max=17.84ms
+
+--- ITI before Trial 9/18: 1.3s ---
+Running Trial 9 | Type: looming_wind | TTC: 0ms | Wind: right
+  [Routing] Active screen: right
+  [TTC] target_ttc_ms=0ms → t_collision=1143.01ms, t_trigger=1143.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=34.7664 | Delay: 0ms | Dir: right
+  [IFI Diag] Trial 9: frames=129, mean=16.67ms, std=0.29ms, min=15.34ms, max=17.79ms
+
+--- ITI before Trial 10/18: 1.7s ---
+Running Trial 10 | Type: looming_wind | TTC: -225ms | Wind: left
+  [Routing] Active screen: left
+  [TTC] target_ttc_ms=-225ms → t_collision=1143.01ms, t_trigger=918.01ms
+[HardwareTrigger] MOCK FIRED: LOOMING_WIND_NODE at t=38.3830 | Delay: 0ms | Dir: left
+  [IFI Diag] Trial 10: frames=129, mean=16.66ms, std=0.27ms, min=15.83ms, max=17.47ms
+
+--- ITI before Trial 11/18: 1.9s ---
+Running Trial 11 | Type: looming_wind | TTC: 0ms | Wind: left
+  [Routing] Active screen: left
+  [TTC] target_ttc_ms=0ms → t_collision=1143.01ms, t_trigger=1143.01ms
+35.4609 	WARNING 	t of last frame was 150.77ms (=1/6)
+36.1098 	WARNING 	t of last frame was 49.28ms (=1/20)
+36.5597 	WARNING 	t of last frame was 66.36ms (=1/15)
+36.9269 	WARNING 	t of last frame was 33.44ms (=1/29)
+44.9645 	WARNING 	Multiple dropped frames have occurred - I'll stop bothering you about them!

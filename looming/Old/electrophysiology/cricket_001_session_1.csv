@@ -1,0 +1,8 @@
+event_name,timestamp,session_num,trial_in_session,global_trial_id,t_ard,dx,dy,dz,stim_state,details
+manual_wait_start,2.720850,1,0,0,,,,,,
+manual_trigger,3.451430,1,0,0,,,,,,
+trial_start,3.451604,1,1,1,,,,,,"{""trial_index"": 0, ""direction"": ""right"", ""lv_ratio_ms"": 80.0, ""initial_angle_deg"": 2.0, ""final_angle_deg"": 180.0}"
+first_frame,8.458955,1,1,1,,,,,,"{""initial_angle"": 2.000003141251734, ""active_screen"": ""right"", ""sync_patch_drawn"": true}"
+collision_reached,8.051699,1,1,1,,,,,,"{""elapsed"": 4.599335899925791, ""t_collision"": 4.583196930460754, ""theta"": 180.0}"
+looming_completed,9.051934,1,1,1,,,,,,"{""elapsed"": 5.599570699967444, ""t_collision"": 4.583196930460754}"
+iti_start,9.069383,1,1,1,,,,,,"{""duration"": 76.34620097727816}"
