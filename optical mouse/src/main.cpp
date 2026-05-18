@@ -32,14 +32,14 @@
   Hardware Pin Map
   ----------------
     Pin 13  = TTL Sync marker (output)
-    Pin 28  = Valve 0 (L / index 0)  [was pin 24, now shifted]
-    Pin 30  = Valve 1 (R / index 1)  [was pin 26, now shifted]
-    Pin 32  = Valve 2
-    Pin 34  = Valve 3
-    Pin 36  = Valve 4
-    Pin 38  = Valve 5
-    Pin 40  = Valve 6
-    Pin 42  = Valve 7
+    Pin 38  = Valve 0 (L / index 0)
+    Pin 40  = Valve 1 (R / index 1)
+    Pin 42  = Valve 2
+    Pin 44  = Valve 3
+    Pin 46  = Valve 4
+    Pin 48  = Valve 5
+    Pin 50  = Valve 6
+    Pin 52  = Valve 7
     Pin 18  = Photodiode interrupt input (RISING edge)
     Pin  2  = SCLK Sensor X
     Pin  3  = SDIO Sensor X
@@ -58,7 +58,7 @@ const int PIN_PHOTODIODE_INT = 18; // INT5 on Mega 2560
 
 // Multi-channel valve array (pins 24 & 26 occupied by sensors → start at 28)
 const int totalValves = 8;
-const int valvePins[totalValves] = {28, 30, 32, 34, 36, 38, 40, 42};
+const int valvePins[totalValves] = {38, 40, 42, 44, 46, 48, 50, 52};
 
 // ==========================================================================
 // SPI — Optical Sensors (unchanged)
@@ -109,7 +109,7 @@ int targetValvePin = -1;         // pin number of the armed valve
 uint16_t targetDelay = 0;        // 0–10000 ms delay after T₀
 unsigned long valveOpenTime = 0; // millis() when valve was energised
 
-const unsigned long PULSE_INTERVAL_MS = 5; // Valve open pulse duration (ms)
+const unsigned long PULSE_INTERVAL_MS = 200; // Valve open pulse duration (ms)
 
 // ==========================================================================
 // Non-blocking Serial Packet Parser
@@ -152,6 +152,7 @@ void parseSerialPackets()
             char dir = cmdBuf[0];
 
             // --- Parse direction → valve index ---
+            // --- Set airflow direction (L/R) with direct valve index (0–7) ---
             int valveIdx = -1;
             if (dir == 'L' || dir == 'l')
             {
@@ -159,7 +160,7 @@ void parseSerialPackets()
             }
             else if (dir == 'R' || dir == 'r')
             {
-                valveIdx = 1;
+                valveIdx = 7;
             }
             else if (dir >= '0' && dir <= '7')
             {
@@ -201,6 +202,13 @@ void parseSerialPackets()
             // Clear any stale T₀ flag so we only respond to the NEXT flash
             noInterrupts();
             t0_triggered = false;
+
+            // -----------------------------
+            // Debug without phodiode
+            t0_triggered = true;
+            t0_millis = millis();
+            // -----------------------------
+
             interrupts();
 
             continue;

@@ -1,14 +1,14 @@
 *.png
 #outputs/
 __pycache__
+.pio
+.vscode
 src/__pycache__
 debug/
 looming/*.csv
 looming/*.txt
 looming/__pycache__
 looming/.vscode
-LOD_test/.pio
-LOD_test/.vscode
 BioMoR/.vscode
 BioMoR/__pycache__
 
